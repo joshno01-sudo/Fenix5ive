@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "printer-monitor"
+version = "1.0.0"
+description = "Monitor HP printer supply levels over SNMP, track spare stock, and alert when levels get low."
+readme = "README.md"
+requires-python = ">=3.9"
+# No runtime dependencies on purpose: SNMP, the GUI, the database and email are
+# all done with the standard library so this installs on a locked-down shop PC.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+printer-monitor = "printer_monitor.cli:main"
+
+[project.gui-scripts]
+printer-monitor-gui = "printer_monitor.gui.app:run_gui"
+
+[tool.setuptools]
+packages = ["printer_monitor", "printer_monitor.gui"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning"]
