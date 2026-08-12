@@ -18,6 +18,12 @@ on:
 permissions:
   contents: read
 
+# A new push makes the previous run's answer irrelevant, and a hung job should
+# not sit on a runner for hours.
+concurrency:
+  group: fenixvault-${{ github.ref }}
+  cancel-in-progress: true
+
 defaults:
   run:
     working-directory: FenixVault
@@ -61,6 +67,7 @@ jobs:
     name: Build FenixVault.exe
     needs: test
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -77,20 +84,52 @@ jobs:
       - name: Prove a backup and restore work end to end
         shell: pwsh
         run: |
-          # FenixVault.exe is a GUI-subsystem binary, so PowerShell does not
-          # wait for it the way it would for a console program. Every call has
-          # to go through Start-Process -Wait or the next line runs too early.
+          # FenixVault.exe is a GUI-subsystem binary. PowerShell does not wait
+          # for those the way it does for console programs, and Start-Process
+          # -Wait proved unreliable here too, so drive it through the .NET
+          # process API: an unambiguous wait, real exit codes, captured output,
+          # and a timeout so a hang fails with evidence instead of sitting on
+          # the runner.
+          $ErrorActionPreference = 'Stop'
+
           function Invoke-Vault {
-            param([string]$Exe, [string[]]$Args)
-            $p = Start-Process -FilePath $Exe -ArgumentList $Args `
-                               -Wait -PassThru -NoNewWindow
-            if ($p.ExitCode -ne 0) {
-              throw "$Exe $($Args -join ' ') exited with $($p.ExitCode)"
+            param(
+              [string]$Exe,
+              [string[]]$VaultArgs,
+              [int]$TimeoutSeconds = 120
+            )
+            $info = [System.Diagnostics.ProcessStartInfo]::new()
+            $info.FileName = (Resolve-Path $Exe).Path
+            foreach ($argument in $VaultArgs) {
+              $info.ArgumentList.Add($argument)
+            }
+            $info.WorkingDirectory = (Get-Location).Path
+            $info.UseShellExecute = $false
+            $info.RedirectStandardOutput = $true
+            $info.RedirectStandardError = $true
+
+            Write-Host "--> $Exe $($VaultArgs -join ' ')"
+            $proc = [System.Diagnostics.Process]::Start($info)
+            # Read both pipes before waiting, or a chatty run fills a pipe
+            # buffer and deadlocks against our own wait.
+            $out = $proc.StandardOutput.ReadToEndAsync()
+            $err = $proc.StandardError.ReadToEndAsync()
+
+            if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
+              try { $proc.Kill($true) } catch { }
+              Write-Host "stdout so far: $($out.Result)"
+              Write-Host "stderr so far: $($err.Result)"
+              throw "$Exe did not finish within $TimeoutSeconds seconds"
+            }
+            if ($out.Result) { Write-Host $out.Result }
+            if ($err.Result) { Write-Host "stderr: $($err.Result)" }
+            if ($proc.ExitCode -ne 0) {
+              throw "$Exe $($VaultArgs -join ' ') exited with $($proc.ExitCode)"
             }
           }
 
-          Invoke-Vault .\dist\FenixVault.exe @('--version')
-          Invoke-Vault .\dist\FenixVault.exe @('--list-drives')
+          Invoke-Vault .\dist\FenixVault.exe @('--version') 60
+          Invoke-Vault .\dist\FenixVault.exe @('--list-drives') 60
 
           New-Item -ItemType Directory -Force -Path work\source\Art | Out-Null
           Set-Content work\source\Art\logo.ai 'illustrator master'
