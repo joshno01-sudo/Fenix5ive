@@ -141,6 +141,27 @@ class TestExcludeRules(unittest.TestCase):
         self.assertTrue(rules.should_skip_dir(
             p("users", "josh", "AppData", "Local"), "SomeVendorCache"))
 
+    def test_choosing_a_folder_beats_the_appdata_rule(self):
+        # Ticking a folder is an explicit decision. If the folder happens to
+        # live under AppData\Local, the policy must not silently prune every
+        # single thing inside it -- that backs up nothing and reports success.
+        rules = ExcludeRules(skip_appdata_local=True, skip_hidden=False,
+                             skip_junk=False)
+        root = p("users", "josh", "AppData", "Local", "MyShopFiles")
+        self.assertTrue(rules.should_skip_dir(root, "Artwork"))
+        self.assertFalse(rules.should_skip_dir(root, "Artwork", root=root))
+
+    def test_the_rule_still_applies_below_the_chosen_root(self):
+        rules = ExcludeRules(skip_appdata_local=True, skip_hidden=False,
+                             skip_junk=False)
+        root = p("users", "josh")
+        inside = p("users", "josh", "AppData", "Local")
+        self.assertTrue(rules.should_skip_dir(inside, "SomeVendorCache",
+                                              root=root))
+        self.assertFalse(rules.should_skip_dir(
+            p("users", "josh", "AppData", "Local", "Microsoft"), "Outlook",
+            root=root))
+
 
 if __name__ == "__main__":
     unittest.main()

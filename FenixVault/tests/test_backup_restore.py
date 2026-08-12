@@ -108,6 +108,34 @@ class TestScan(BackupRestoreCase):
         self.assertIsNone(result.ext_counts.get(".jpg"))
         self.assertEqual(result.ext_counts.get(".ai"), 1)
 
+    def test_a_chosen_folder_under_appdata_local_is_still_scanned(self):
+        # A folder the user picked must be scanned even when it sits below a
+        # path the default policy would prune. Windows temp folders live under
+        # AppData\Local, which is how this was found: the program reported
+        # success having copied nothing at all.
+        nested = os.path.join(self.root, "AppData", "Local", "Temp", "ShopPC")
+        os.makedirs(os.path.join(nested, "Artwork"))
+        with open(os.path.join(nested, "Artwork", "logo.ai"), "w",
+                  encoding="utf-8") as handle:
+            handle.write("artwork")
+
+        selection = FolderSelection()
+        selection.set(nested, True)
+        result = scan(selection, ExcludeRules())
+        self.assertEqual(result.ext_counts.get(".ai"), 1)
+
+    def test_appdata_local_is_still_pruned_when_walking_from_above(self):
+        profile = os.path.join(self.root, "Profile")
+        cache = os.path.join(profile, "AppData", "Local", "VendorCache")
+        os.makedirs(cache)
+        with open(os.path.join(cache, "junk.ai"), "w", encoding="utf-8") as handle:
+            handle.write("cache junk")
+
+        selection = FolderSelection()
+        selection.set(profile, True)
+        result = scan(selection, ExcludeRules())
+        self.assertIsNone(result.ext_counts.get(".ai"))
+
     def test_cancelling_stops_the_scan(self):
         cancel = threading.Event()
         cancel.set()

@@ -180,8 +180,16 @@ class ExcludeRules:
     # Extra folder names the caller wants ignored, lowercase.
     extra_names: set[str] = field(default_factory=set)
 
-    def should_skip_dir(self, dirpath: str, dirname: str) -> bool:
-        """True when the walker should not descend into *dirpath*/*dirname*."""
+    def should_skip_dir(self, dirpath: str, dirname: str,
+                        root: str | None = None) -> bool:
+        """True when the walker should not descend into *dirpath*/*dirname*.
+
+        *root* is the folder the user actually ticked. Path-shaped rules are
+        matched only against the part below it, because choosing a folder is an
+        explicit decision that outranks the default policy -- otherwise picking
+        a folder that merely happens to sit under, say, ``AppData\\Local`` would
+        silently back up nothing while reporting success.
+        """
         lowered = dirname.lower()
         if lowered in ALWAYS_SKIP_NAMES:
             return True
@@ -197,7 +205,7 @@ class ExcludeRules:
             if lowered in ("windows", "program files", "program files (x86)",
                            "programdata", "windows.old"):
                 return True
-        if self.skip_appdata_local and _is_skipped_appdata(dirpath, dirname):
+        if self.skip_appdata_local and _is_skipped_appdata(dirpath, dirname, root):
             return True
         if self.skip_hidden and _is_hidden(os.path.join(dirpath, dirname)):
             return True
@@ -214,11 +222,16 @@ def _is_drive_root(path: str) -> bool:
     return normalised == "/"
 
 
-def _is_skipped_appdata(dirpath: str, dirname: str) -> bool:
+def _is_skipped_appdata(dirpath: str, dirname: str,
+                        root: str | None = None) -> bool:
     """True for AppData\\Local subfolders outside the keep-list."""
     # Lowercased here rather than leaning on norm(), which only case-folds on
     # Windows -- this comparison has to be case-insensitive wherever it runs.
     full = norm(os.path.join(dirpath, dirname)).lower()
+    if root:
+        root_normalised = norm(root).lower()
+        if full.startswith(root_normalised):
+            full = full[len(root_normalised):]
     marker = "\\appdata\\local\\" if IS_WINDOWS else "/appdata/local/"
     index = full.find(marker)
     if index == -1:

@@ -166,7 +166,7 @@ def iter_files(selection: FolderSelection, excludes: ExcludeRules,
                             # the folder being inside a ticked parent.
                             if not selection.effective(child):
                                 continue
-                            if excludes.should_skip_dir(current, entry.name):
+                            if excludes.should_skip_dir(current, entry.name, root):
                                 continue
                             stack.append(child)
                             continue
