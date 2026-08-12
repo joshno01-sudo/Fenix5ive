@@ -1,0 +1,111 @@
+name: Fenix Vault
+
+# Runs the engine tests on every change, and builds the Windows program so a
+# ready-to-run FenixVault.exe can be downloaded from the Actions tab without
+# anyone needing Python installed.
+
+on:
+  push:
+    paths:
+      - 'FenixVault/**'
+      - '.github/workflows/fenixvault.yml'
+  pull_request:
+    paths:
+      - 'FenixVault/**'
+      - '.github/workflows/fenixvault.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: FenixVault
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.10'
+          - os: ubuntu-latest
+            python: '3.12'
+          - os: windows-latest
+            python: '3.12'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Run the engine tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Check for unused names and typos
+        run: |
+          python -m pip install --quiet pyflakes
+          python -m pyflakes fenixvault tests FenixVault.py
+
+      - name: Smoke-test the command line
+        run: |
+          python FenixVault.py --version
+          python FenixVault.py --list-drives
+          python FenixVault.py --list-categories
+
+  build-windows:
+    name: Build FenixVault.exe
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Build
+        run: python -m PyInstaller build/FenixVault.spec --noconfirm --clean
+
+      - name: Check the program starts
+        # No display on a runner, so exercise the packaged exe through its
+        # command line -- enough to prove the bundle imports and runs.
+        run: |
+          .\dist\FenixVault.exe --version
+          .\dist\FenixVault.exe --list-drives
+
+      - name: Prove a backup and restore work end to end
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path work\source\Art | Out-Null
+          Set-Content work\source\Art\logo.ai 'illustrator master'
+          Set-Content work\source\Art\decal.plt 'plotter path'
+          New-Item -ItemType Directory -Force -Path work\usb | Out-Null
+          .\dist\FenixVault.exe --no-gui --backup --from work\source --to work\usb
+          $backup = (Get-ChildItem work\usb -Directory)[0].FullName
+          if (-not (Test-Path "$backup\RESTORE.exe")) {
+            throw "the restore program was not placed in the backup"
+          }
+          Remove-Item work\source -Recurse -Force
+          & "$backup\RESTORE.exe" --no-gui --restore $backup
+          if (-not (Test-Path work\source\Art\logo.ai)) {
+            throw "logo.ai did not come back"
+          }
+          if ((Get-Content work\source\Art\logo.ai) -ne 'illustrator master') {
+            throw "logo.ai came back with the wrong contents"
+          }
+          Write-Host "Backup and restore round trip succeeded."
+
+      - name: Upload FenixVault.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: FenixVault-windows
+          path: FenixVault/dist/FenixVault.exe
+          if-no-files-found: error

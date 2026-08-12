@@ -1,0 +1,13 @@
+# PyInstaller output
+build/build/
+dist/
+*.manifest
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Test leftovers
+FenixVault-Backup-*/
