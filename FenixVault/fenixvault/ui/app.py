@@ -42,7 +42,13 @@ class FenixVaultApp:
         self.extensions: set[str] = catalog.default_extensions()
         self.custom_extensions: set[str] = set()
         self.scan_result: ScanResult | None = None
-        self.detection = appdetect.detect()
+        # Filled in by a worker thread. Reading the registry takes long enough
+        # on a well-stocked PC that doing it here would leave the user staring
+        # at nothing after a double-click.
+        self.detection = appdetect.Detection()
+        # Once the user has touched the file-type picker, the detection result
+        # must not come along afterwards and re-tick things behind them.
+        self.types_touched = False
 
         self.events: queue.Queue = queue.Queue()
         self.cancel = threading.Event()
@@ -60,13 +66,27 @@ class FenixVaultApp:
         self.cat_blurbs: dict[str, str] = {}     # category key -> explanation
 
         self._build()
-        self._apply_program_suggestions()
         self._preselect_personal_folders()
         self._refresh_types_tree()
         self._update_summary()
 
         self.root.after(80, self._pump)
+        self.root.after(10, self._start_detection)
         self.root.after(400, self.start_scan)
+
+    def _start_detection(self) -> None:
+        """Ask the registry what is installed, without blocking the window."""
+        def work() -> None:
+            self.events.put(("detect_done", appdetect.detect()))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _on_detect_done(self, detection) -> None:
+        self.detection = detection
+        if not self.types_touched:
+            self._apply_program_suggestions()
+        self._refresh_types_tree()
+        self._update_summary()
 
     # ------------------------------------------------------------------
     # Layout
@@ -611,6 +631,7 @@ class FenixVaultApp:
         return "partial"
 
     def _toggle_type(self, node: str) -> None:
+        self.types_touched = True
         for ext, item in self.ext_nodes.items():
             if item == node:
                 if ext in self.extensions:
@@ -657,6 +678,7 @@ class FenixVaultApp:
                     node, self._category_state(self._extensions_of(key)))
 
     def _types_recommended(self) -> None:
+        self.types_touched = True
         self.extensions = catalog.default_extensions()
         self._apply_program_suggestions()
         self.extensions.update(self.custom_extensions)
@@ -664,6 +686,7 @@ class FenixVaultApp:
         self._update_summary()
 
     def _types_all(self) -> None:
+        self.types_touched = True
         self.extensions = catalog.known_extensions()
         self.extensions.update(self.custom_extensions)
         found = self._visible_extensions()
@@ -672,6 +695,7 @@ class FenixVaultApp:
         self._update_summary()
 
     def _types_none(self) -> None:
+        self.types_touched = True
         self.extensions = set()
         self._refresh_types_tree()
         self._update_summary()
@@ -685,6 +709,7 @@ class FenixVaultApp:
                 "Type a file ending such as  ai  or  .plt  and press Add.",
                 parent=self.root)
             return
+        self.types_touched = True
         self.custom_entry.delete(0, "end")
         if catalog.category_of(ext) is None:
             self.custom_extensions.add(ext)
@@ -885,7 +910,9 @@ class FenixVaultApp:
         try:
             while True:
                 kind, payload = self.events.get_nowait()
-                if kind == "scan_progress":
+                if kind == "detect_done":
+                    self._on_detect_done(payload)
+                elif kind == "scan_progress":
                     self._on_scan_progress(payload)
                 elif kind == "scan_done":
                     self._on_scan_done(payload)

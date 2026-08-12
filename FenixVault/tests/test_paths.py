@@ -102,6 +102,50 @@ class TestCatalog(unittest.TestCase):
             self.assertIsNone(catalog.normalise_ext(bad))
 
 
+class TestOutputPlumbing(unittest.TestCase):
+    """The packaged build is a windowed exe, so printing needs a safety net."""
+
+    def setUp(self) -> None:
+        self._stdout, self._stderr = sys.stdout, sys.stderr
+
+    def tearDown(self) -> None:
+        sys.stdout, sys.stderr = self._stdout, self._stderr
+
+    def test_a_working_stream_is_left_alone(self):
+        from io import StringIO
+
+        from fenixvault import cli
+        captured = StringIO()
+        sys.stdout = captured
+        cli.ensure_output()
+        self.assertIs(sys.stdout, captured,
+                      "a usable stdout must not be swapped out from under a "
+                      "scheduler or CI that is capturing it")
+
+    def test_a_missing_stream_never_crashes_a_backup(self):
+        from fenixvault import cli
+        sys.stdout = None       # what a windowed exe can hand us
+        sys.stderr = None
+        cli.ensure_output()
+        sys.stdout.write("this must not raise")
+        sys.stdout.flush()
+        sys.stderr.write("nor this")
+
+    def test_a_broken_stream_is_replaced(self):
+        from fenixvault import cli
+
+        class Broken:
+            def write(self, _text):
+                raise OSError("the handle is closed")
+
+            def flush(self):
+                raise OSError("the handle is closed")
+
+        sys.stdout = Broken()
+        cli.ensure_output()
+        sys.stdout.write("safe now")
+
+
 class TestHelpers(unittest.TestCase):
     def test_split_ext(self):
         self.assertEqual(split_ext("logo.AI"), ".ai")

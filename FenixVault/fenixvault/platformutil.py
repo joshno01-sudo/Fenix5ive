@@ -175,6 +175,15 @@ def _list_drives_windows() -> list[DriveInfo]:
             # Optical and unmounted letters have nothing worth backing up and
             # querying them can spin up or block on empty drives.
             continue
+        if kind == DRIVE_NETWORK:
+            # A mapped drive whose server is unreachable makes disk_usage block
+            # for the full SMB timeout, and there is no way to bound it. Office
+            # PCs are full of stale mappings, so the drive is listed without
+            # its size rather than freezing the window on startup.
+            drives.append(DriveInfo(path=root, label="Network drive",
+                                    kind=kind, total_bytes=0, free_bytes=0,
+                                    is_system=False))
+            continue
         try:
             usage = shutil.disk_usage(root)
             total, free = usage.total, usage.free

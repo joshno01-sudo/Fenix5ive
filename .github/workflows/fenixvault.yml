@@ -74,32 +74,52 @@ jobs:
       - name: Build
         run: python -m PyInstaller build/FenixVault.spec --noconfirm --clean
 
-      - name: Check the program starts
-        # No display on a runner, so exercise the packaged exe through its
-        # command line -- enough to prove the bundle imports and runs.
-        run: |
-          .\dist\FenixVault.exe --version
-          .\dist\FenixVault.exe --list-drives
-
       - name: Prove a backup and restore work end to end
         shell: pwsh
         run: |
+          # FenixVault.exe is a GUI-subsystem binary, so PowerShell does not
+          # wait for it the way it would for a console program. Every call has
+          # to go through Start-Process -Wait or the next line runs too early.
+          function Invoke-Vault {
+            param([string]$Exe, [string[]]$Args)
+            $p = Start-Process -FilePath $Exe -ArgumentList $Args `
+                               -Wait -PassThru -NoNewWindow
+            if ($p.ExitCode -ne 0) {
+              throw "$Exe $($Args -join ' ') exited with $($p.ExitCode)"
+            }
+          }
+
+          Invoke-Vault .\dist\FenixVault.exe @('--version')
+          Invoke-Vault .\dist\FenixVault.exe @('--list-drives')
+
           New-Item -ItemType Directory -Force -Path work\source\Art | Out-Null
           Set-Content work\source\Art\logo.ai 'illustrator master'
           Set-Content work\source\Art\decal.plt 'plotter path'
           New-Item -ItemType Directory -Force -Path work\usb | Out-Null
-          .\dist\FenixVault.exe --no-gui --backup --from work\source --to work\usb
-          $backup = (Get-ChildItem work\usb -Directory)[0].FullName
+
+          Invoke-Vault .\dist\FenixVault.exe `
+            @('--no-gui', '--backup', '--from', 'work\source', '--to', 'work\usb')
+
+          $made = @(Get-ChildItem work\usb -Directory)
+          if ($made.Count -ne 1) {
+            throw "expected one backup folder, found $($made.Count)"
+          }
+          $backup = $made[0].FullName
           if (-not (Test-Path "$backup\RESTORE.exe")) {
             throw "the restore program was not placed in the backup"
           }
+
           Remove-Item work\source -Recurse -Force
-          & "$backup\RESTORE.exe" --no-gui --restore $backup
+          Invoke-Vault "$backup\RESTORE.exe" @('--no-gui', '--restore', $backup)
+
           if (-not (Test-Path work\source\Art\logo.ai)) {
             throw "logo.ai did not come back"
           }
           if ((Get-Content work\source\Art\logo.ai) -ne 'illustrator master') {
             throw "logo.ai came back with the wrong contents"
+          }
+          if (-not (Test-Path work\source\Art\decal.plt)) {
+            throw "decal.plt did not come back"
           }
           Write-Host "Backup and restore round trip succeeded."
 

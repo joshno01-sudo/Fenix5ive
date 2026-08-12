@@ -97,6 +97,59 @@ def _resolve_extensions(args) -> set[str]:
     return catalog.default_extensions()
 
 
+class _NullStream:
+    """Swallows output when there is genuinely nowhere to write it."""
+
+    def write(self, _text: str) -> int:
+        return 0
+
+    def flush(self) -> None:
+        pass
+
+    def isatty(self) -> bool:
+        return False
+
+
+def _stream_works(stream) -> bool:
+    if stream is None:
+        return False
+    try:
+        stream.write("")
+        stream.flush()
+    except Exception:
+        return False
+    return True
+
+
+def ensure_output() -> None:
+    """Make printing work whatever we were launched from.
+
+    The packaged build is a GUI-subsystem exe so that double-clicking it does
+    not flash a black console window. The cost is that it starts with no
+    console at all, and ``sys.stdout`` can be missing -- which would turn the
+    first ``print`` of a scheduled backup into a crash.
+
+    Run from a terminal we attach to that terminal. Run with pipes (a task
+    scheduler, CI) the inherited pipes already work and are left alone, because
+    stealing them would send the output somewhere nobody is reading.
+    """
+    if _stream_works(getattr(sys, "stdout", None)):
+        return
+    if os.name == "nt":
+        try:
+            import ctypes
+            ATTACH_PARENT_PROCESS = -1
+            if ctypes.windll.kernel32.AttachConsole(ATTACH_PARENT_PROCESS):
+                sys.stdout = open("CONOUT$", "w", encoding="utf-8", buffering=1)
+                sys.stderr = open("CONOUT$", "w", encoding="utf-8", buffering=1)
+                return
+        except Exception:
+            pass
+    sys.stdout = _NullStream()          # type: ignore[assignment]
+    if not _stream_works(getattr(sys, "stderr", None)):
+        sys.stderr = _NullStream()      # type: ignore[assignment]
+
+
 def _progress_line(text: str) -> None:
     sys.stdout.write("\r" + text.ljust(78)[:78])
     sys.stdout.flush()
@@ -187,6 +240,8 @@ def run_cli_restore(args, backup_dir: str) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Before parsing, because argparse prints --version and usage errors itself.
+    ensure_output()
     args = build_parser().parse_args(argv)
 
     if args.list_drives:
