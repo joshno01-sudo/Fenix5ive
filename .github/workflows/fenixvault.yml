@@ -1,0 +1,170 @@
+name: Fenix Vault
+
+# Runs the engine tests on every change, and builds the Windows program so a
+# ready-to-run FenixVault.exe can be downloaded from the Actions tab without
+# anyone needing Python installed.
+
+on:
+  push:
+    paths:
+      - 'FenixVault/**'
+      - '.github/workflows/fenixvault.yml'
+  pull_request:
+    paths:
+      - 'FenixVault/**'
+      - '.github/workflows/fenixvault.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push makes the previous run's answer irrelevant, and a hung job should
+# not sit on a runner for hours.
+concurrency:
+  group: fenixvault-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: FenixVault
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.10'
+          - os: ubuntu-latest
+            python: '3.12'
+          - os: windows-latest
+            python: '3.12'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Run the engine tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Check for unused names and typos
+        run: |
+          python -m pip install --quiet pyflakes
+          python -m pyflakes fenixvault tests FenixVault.py
+
+      - name: Smoke-test the command line
+        run: |
+          python FenixVault.py --version
+          python FenixVault.py --list-drives
+          python FenixVault.py --list-categories
+
+  build-windows:
+    name: Build FenixVault.exe
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Build
+        run: python -m PyInstaller build/FenixVault.spec --noconfirm --clean
+
+      - name: Prove a backup and restore work end to end
+        shell: pwsh
+        run: |
+          # FenixVault.exe is a GUI-subsystem binary. PowerShell does not wait
+          # for those the way it does for console programs, and Start-Process
+          # -Wait proved unreliable here too, so drive it through the .NET
+          # process API: an unambiguous wait, real exit codes, captured output,
+          # and a timeout so a hang fails with evidence instead of sitting on
+          # the runner.
+          $ErrorActionPreference = 'Stop'
+
+          function Invoke-Vault {
+            param(
+              [string]$Exe,
+              [string[]]$VaultArgs,
+              [int]$TimeoutSeconds = 120
+            )
+            $info = [System.Diagnostics.ProcessStartInfo]::new()
+            $info.FileName = (Resolve-Path $Exe).Path
+            foreach ($argument in $VaultArgs) {
+              $info.ArgumentList.Add($argument)
+            }
+            $info.WorkingDirectory = (Get-Location).Path
+            $info.UseShellExecute = $false
+            $info.RedirectStandardOutput = $true
+            $info.RedirectStandardError = $true
+
+            Write-Host "--> $Exe $($VaultArgs -join ' ')"
+            $proc = [System.Diagnostics.Process]::Start($info)
+            # Read both pipes before waiting, or a chatty run fills a pipe
+            # buffer and deadlocks against our own wait.
+            $out = $proc.StandardOutput.ReadToEndAsync()
+            $err = $proc.StandardError.ReadToEndAsync()
+
+            if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
+              try { $proc.Kill($true) } catch { }
+              Write-Host "stdout so far: $($out.Result)"
+              Write-Host "stderr so far: $($err.Result)"
+              throw "$Exe did not finish within $TimeoutSeconds seconds"
+            }
+            if ($out.Result) { Write-Host $out.Result }
+            if ($err.Result) { Write-Host "stderr: $($err.Result)" }
+            if ($proc.ExitCode -ne 0) {
+              throw "$Exe $($VaultArgs -join ' ') exited with $($proc.ExitCode)"
+            }
+          }
+
+          Invoke-Vault .\dist\FenixVault.exe @('--version') 60
+          Invoke-Vault .\dist\FenixVault.exe @('--list-drives') 60
+
+          New-Item -ItemType Directory -Force -Path work\source\Art | Out-Null
+          Set-Content work\source\Art\logo.ai 'illustrator master'
+          Set-Content work\source\Art\decal.plt 'plotter path'
+          New-Item -ItemType Directory -Force -Path work\usb | Out-Null
+
+          Invoke-Vault .\dist\FenixVault.exe `
+            @('--no-gui', '--backup', '--from', 'work\source', '--to', 'work\usb')
+
+          $made = @(Get-ChildItem work\usb -Directory)
+          if ($made.Count -ne 1) {
+            throw "expected one backup folder, found $($made.Count)"
+          }
+          $backup = $made[0].FullName
+          if (-not (Test-Path "$backup\RESTORE.exe")) {
+            throw "the restore program was not placed in the backup"
+          }
+
+          Remove-Item work\source -Recurse -Force
+          Invoke-Vault "$backup\RESTORE.exe" @('--no-gui', '--restore', $backup)
+
+          if (-not (Test-Path work\source\Art\logo.ai)) {
+            throw "logo.ai did not come back"
+          }
+          if ((Get-Content work\source\Art\logo.ai) -ne 'illustrator master') {
+            throw "logo.ai came back with the wrong contents"
+          }
+          if (-not (Test-Path work\source\Art\decal.plt)) {
+            throw "decal.plt did not come back"
+          }
+          Write-Host "Backup and restore round trip succeeded."
+
+      - name: Upload FenixVault.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: FenixVault-windows
+          path: FenixVault/dist/FenixVault.exe
+          if-no-files-found: error

@@ -27,7 +27,17 @@ index.html        — the whole site (single page, anchored sections)
 css/style.css     — design system + layout
 js/main.js        — nav, scroll reveals, counters, tint simulator
 assets/img/       — optimized imagery pulled from the current site
+FenixVault/       — the shop's Windows backup program (separate from the site)
 ```
+
+## Fenix Vault
+
+Also in this repository: **[Fenix Vault](FenixVault/)**, a Windows backup
+program for the shop. It copies personal and business files — artwork, cut
+files, print files, invoices, photos, fonts, email — onto any drive you plug
+in, keeping the folder structure exactly as it is, and puts it all back on
+another PC from a single double-click. Nothing to do with the website; it just
+lives here too.
 
 ## Run it locally
 
