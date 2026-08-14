@@ -2,8 +2,8 @@
 # Keep the four numbers in step with fenixvault/version.py.
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 0, 0, 0),
-    prodvers=(1, 0, 0, 0),
+    filevers=(1, 1, 0, 0),
+    prodvers=(1, 1, 0, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -16,11 +16,11 @@ VSVersionInfo(
       StringTable(
         '040904B0',
         [StringStruct('FileDescription', 'Fenix Vault - personal and business file backup'),
-         StringStruct('FileVersion', '1.0.0'),
+         StringStruct('FileVersion', '1.1.0'),
          StringStruct('InternalName', 'FenixVault'),
          StringStruct('OriginalFilename', 'FenixVault.exe'),
          StringStruct('ProductName', 'Fenix Vault'),
-         StringStruct('ProductVersion', '1.0.0')])
+         StringStruct('ProductVersion', '1.1.0')])
     ]),
     VarFileInfo([VarStruct('Translation', [1033, 1200])])
   ]

@@ -44,6 +44,23 @@ SECTIONS: list[tuple[str, str]] = [
      "'Other file types found on this PC', with the name Windows itself uses "
      "for it. You can also type in any file ending by hand."),
 
+    ("Recording how the PC is set up",
+     "Files are only half of a rebuild. The other half is everything that "
+     "lives nowhere you can copy: which printer is on which IP address, the "
+     "Wi-Fi password nobody has written down for years, the drive encryption "
+     "key without which the old disk is a brick.\n\n"
+     "With 'Record this PC's setup' ticked, the backup also gets a page "
+     "called REBUILD-THIS-PC.html. Open it on your phone while you reinstall "
+     "Windows. It holds pictures of the desktop exactly as it looked, the "
+     "list of installed programs, printers and their ports, network settings, "
+     "Wi-Fi profiles, what starts with Windows, fonts, your regional "
+     "settings, and exported copies of the Windows preference keys.\n\n"
+     "Nothing on the machine is changed to collect any of it. Every reading "
+     "is taken read-only.\n\n"
+     "Because that page can contain Wi-Fi passwords, a BitLocker recovery key "
+     "and your Windows product key, it says so at the top in red, and the "
+     "drive you back up to should be kept somewhere safe."),
+
     ("How the copy is laid out",
      "The backup folder holds a folder called Data, and inside that the "
      "original folder structure is reproduced exactly:\n\n"

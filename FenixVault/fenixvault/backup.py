@@ -36,8 +36,11 @@ COPY_CHUNK = 1024 * 1024
 REUSE_LIMIT = 2_000_000
 
 PHASE_PREPARING = "preparing"
+PHASE_SNAPSHOT = "snapshot"
 PHASE_COPYING = "copying"
 PHASE_FINISHING = "finishing"
+
+SNAPSHOT_DIR_NAME = "SystemSnapshot"
 
 
 @dataclass
@@ -45,6 +48,8 @@ class BackupOptions:
     verify: bool = True             # hash every file as it is copied
     incremental: bool = True        # leave already-copied files alone
     include_restore_tool: bool = True
+    capture_snapshot: bool = True   # record how this PC is set up
+    snapshot_screenshots: bool = True
     expected_files: int = 0         # from the scan, for the progress bar
     expected_bytes: int = 0
 
@@ -78,6 +83,9 @@ class BackupResult:
     bytes_total: int = 0
     errors: list[str] = field(default_factory=list)
     report_path: str | None = None
+    snapshot_report: str | None = None
+    snapshot_failed_sections: int = 0
+    screenshots_taken: int = 0
     cancelled: bool = False
     duration_seconds: float = 0.0
 
@@ -88,6 +96,11 @@ class BackupResult:
     def summary(self) -> str:
         parts = [f"{self.files_copied + self.files_reused:,} files",
                  human_bytes(self.bytes_total)]
+        if self.snapshot_report:
+            shots = (f" and {self.screenshots_taken} screenshot"
+                     f"{'s' if self.screenshots_taken != 1 else ''}"
+                     if self.screenshots_taken else "")
+            parts.append(f"PC settings recorded{shots}")
         if self.files_reused:
             parts.append(f"{self.files_reused:,} already up to date")
         if self.files_failed:
@@ -233,6 +246,41 @@ def run_backup(selection: FolderSelection,
 
     backup_key = norm(backup_dir)
     made_dirs: set[str] = set()
+
+    # Taken before the copy, not after: the screenshots should show the desktop
+    # as it was when the button was pressed, and if the user stops the copy
+    # part way they still come away with the machine's setup recorded.
+    if options.capture_snapshot:
+        state.phase = PHASE_SNAPSHOT
+        state.message = "Recording how this PC is set up..."
+        ping(force=True)
+        try:
+            from . import report as report_module
+            from . import sysinfo
+
+            def note(message: str) -> None:
+                state.message = message
+                ping()
+
+            snapshot = sysinfo.collect(
+                os.path.join(backup_dir, SNAPSHOT_DIR_NAME),
+                progress=note, cancel=cancel,
+                include_screenshots=options.snapshot_screenshots)
+            result.screenshots_taken = len(snapshot.screenshots)
+            result.snapshot_failed_sections = len(snapshot.failed)
+            result.snapshot_report = report_module.write_report(
+                backup_dir, snapshot, computer=machine["computer"])
+            info.has_snapshot = True
+            info.snapshot_has_secrets = snapshot.holds_secrets
+            # Deliberately not added to result.errors: that list becomes
+            # backup-report.txt, which is about files that did not get copied.
+            # A section this PC has nothing to say about -- no BitLocker, no
+            # wireless card -- is not a skipped file, and saying so would send
+            # someone hunting for data loss that never happened. The report
+            # itself shows which sections came back empty.
+        except Exception as exc:
+            # A snapshot is a bonus; never let it cost someone their files.
+            result.errors.append(f"Could not record the PC's settings: {exc}")
 
     state.phase = PHASE_COPYING
     state.message = "Copying files..."

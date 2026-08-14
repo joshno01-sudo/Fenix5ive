@@ -1,0 +1,38 @@
+WHAT THIS PROGRAM DOES
+
+Fenix Vault copies the files you would be upset to lose -- photos, documents,
+artwork, cut files, print files, invoices, fonts, email -- onto a drive you
+choose, keeping every folder exactly the way it is now.
+
+It also records how this computer is set up: pictures of the desktop, the list
+of installed programs, printer names and their IP addresses, Wi-Fi passwords,
+drive encryption keys, and your Windows preferences. All of that goes into one
+web page called REBUILD-THIS-PC.html that you can read on your phone while
+setting the machine up again.
+
+That combination is what lets you wipe this PC and start over without losing
+anything you cannot get back.
+
+
+HOW YOU WILL USE IT
+
+  1. Plug in a USB or external drive with enough free space.
+  2. Start Fenix Vault and press BACK UP NOW.
+  3. When it finishes, unplug the drive and reset Windows.
+  4. Afterwards, plug the drive into the fresh install, open the backup folder
+     and double-click RESTORE. Every folder is rebuilt and every file goes
+     back where it came from.
+
+
+TWO THINGS WORTH KNOWING
+
+Your original files are never moved, changed or deleted. Everything this
+program does to your data is a copy.
+
+The backup will contain your Wi-Fi passwords and, if this PC is encrypted,
+your BitLocker recovery key. That is deliberate -- without them a rebuild can
+be impossible -- but it means the drive you back up to should be kept
+somewhere safe.
+
+
+Press Next to install.

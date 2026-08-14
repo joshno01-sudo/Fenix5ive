@@ -168,3 +168,71 @@ jobs:
           name: FenixVault-windows
           path: FenixVault/dist/FenixVault.exe
           if-no-files-found: error
+
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) {
+            Write-Host 'Inno Setup not on the image; installing it.'
+            choco install innosetup --no-progress -y | Out-String | Write-Host
+          }
+          if (-not (Test-Path $iscc)) {
+            throw "Inno Setup did not install; ISCC.exe not found at $iscc"
+          }
+          & $iscc installer\FenixVault.iss
+          if ($LASTEXITCODE -ne 0) { throw "iscc exited with $LASTEXITCODE" }
+
+          $setup = 'installer\Output\FenixVault-Setup.exe'
+          if (-not (Test-Path $setup)) { throw 'the installer was not produced' }
+          $size = [math]::Round((Get-Item $setup).Length / 1MB, 1)
+          Write-Host "Built FenixVault-Setup.exe ($size MB)"
+
+      - name: Check the installer installs and uninstalls silently
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $setup = Resolve-Path 'installer\Output\FenixVault-Setup.exe'
+          $target = 'C:\Program Files\Fenix Vault'
+
+          # /VERYSILENT proves the whole install runs unattended; without
+          # /NORESTART a reboot request would hang the runner.
+          $p = Start-Process -FilePath $setup `
+                 -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' `
+                 -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "install exited with $($p.ExitCode)" }
+
+          $installed = Join-Path $target 'FenixVault.exe'
+          if (-not (Test-Path $installed)) {
+            throw "FenixVault.exe is not in $target after installing"
+          }
+          Write-Host "Installed to $installed"
+
+          # And prove the installed copy is the working program, not just bytes.
+          $proc = [System.Diagnostics.Process]::Start(
+            [System.Diagnostics.ProcessStartInfo]@{
+              FileName = $installed; Arguments = '--version'
+              UseShellExecute = $false; RedirectStandardOutput = $true })
+          $out = $proc.StandardOutput.ReadToEnd()
+          if (-not $proc.WaitForExit(60000)) { throw 'installed exe did not exit' }
+          Write-Host "Installed copy reports: $($out.Trim())"
+          if ($out -notmatch 'Fenix Vault') { throw 'unexpected version output' }
+
+          $uninstaller = Join-Path $target 'unins000.exe'
+          if (Test-Path $uninstaller) {
+            $u = Start-Process -FilePath $uninstaller `
+                   -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' `
+                   -Wait -PassThru
+            if ($u.ExitCode -ne 0) { throw "uninstall exited with $($u.ExitCode)" }
+            Write-Host 'Uninstalled cleanly.'
+          } else {
+            throw 'no uninstaller was created'
+          }
+
+      - name: Upload FenixVault-Setup.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: FenixVault-installer
+          path: FenixVault/installer/Output/FenixVault-Setup.exe
+          if-no-files-found: error
