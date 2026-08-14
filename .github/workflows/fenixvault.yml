@@ -42,6 +42,7 @@ jobs:
             python: '3.12'
           - os: windows-latest
             python: '3.12'
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
 
@@ -50,7 +51,10 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: Run the engine tests
-        run: python -m unittest discover -s tests -v
+        # Through the watchdog runner: a hang prints every thread's stack and
+        # exits, instead of sitting on the runner until it is killed and
+        # leaving no logs to work from.
+        run: python tests/run_tests.py -v --timeout 180
 
       - name: Check for unused names and typos
         run: |
@@ -58,10 +62,11 @@ jobs:
           python -m pyflakes fenixvault tests FenixVault.py
 
       - name: Smoke-test the command line
+        timeout-minutes: 4
         run: |
           python FenixVault.py --version
-          python FenixVault.py --list-drives
           python FenixVault.py --list-categories
+          python FenixVault.py --list-drives
 
   build-windows:
     name: Build FenixVault.exe
