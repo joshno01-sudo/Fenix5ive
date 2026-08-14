@@ -40,6 +40,20 @@ DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = ctypes.c_void_p(-4)
 
 MAX_DIMENSION = 30000     # sanity bound; a bad metric should not allocate 40 GB
 
+# MonitorEnumProc, exactly as Windows declares it. The final parameter is an
+# LPARAM -- a pointer-sized integer. Declaring it as anything else (a double,
+# say) puts it in the wrong register class on x64 and every call from that
+# point on is undefined. Kept at module scope so a test can assert the shape.
+if os.name == "nt":
+    MONITOR_ENUM_PROC = ctypes.WINFUNCTYPE(
+        wintypes.BOOL,                    # BOOL return
+        ctypes.c_void_p,                  # HMONITOR
+        ctypes.c_void_p,                  # HDC
+        ctypes.POINTER(wintypes.RECT),    # LPRECT
+        wintypes.LPARAM)                  # LPARAM
+else:                                     # pragma: no cover - shape only
+    MONITOR_ENUM_PROC = None
+
 
 @dataclass
 class Shot:
@@ -138,14 +152,14 @@ def list_monitors() -> list[MonitorInfo]:
     if not IS_WINDOWS:
         return []
     monitors: list[MonitorInfo] = []
-    callback_type = ctypes.WINFUNCTYPE(
-        ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p,
-        ctypes.POINTER(wintypes.RECT), ctypes.c_double)
+    user32 = ctypes.windll.user32
+
+    callback_type = MONITOR_ENUM_PROC
 
     def _callback(handle, _dc, _rect, _data):
         info = _MONITORINFOEXW()
         info.cbSize = ctypes.sizeof(_MONITORINFOEXW)
-        if ctypes.windll.user32.GetMonitorInfoW(handle, ctypes.byref(info)):
+        if user32.GetMonitorInfoW(ctypes.c_void_p(handle), ctypes.byref(info)):
             monitors.append(MonitorInfo(
                 name=info.szDevice or f"Display {len(monitors) + 1}",
                 left=info.rcMonitor.left, top=info.rcMonitor.top,
@@ -153,10 +167,18 @@ def list_monitors() -> list[MonitorInfo]:
                 primary=bool(info.dwFlags & 1)))
         return 1
 
+    # Handles are pointer-sized; without argtypes ctypes would narrow them to
+    # 32 bits on a 64-bit build.
+    user32.GetMonitorInfoW.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    user32.GetMonitorInfoW.restype = wintypes.BOOL
+    user32.EnumDisplayMonitors.argtypes = [ctypes.c_void_p, ctypes.c_void_p,
+                                           callback_type, wintypes.LPARAM]
+    user32.EnumDisplayMonitors.restype = wintypes.BOOL
+
+    native = callback_type(_callback)
     with _DpiScope():
         try:
-            ctypes.windll.user32.EnumDisplayMonitors(
-                None, None, callback_type(_callback), 0)
+            user32.EnumDisplayMonitors(None, None, native, 0)
         except OSError:
             return []
     return monitors

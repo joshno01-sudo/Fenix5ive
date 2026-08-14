@@ -92,6 +92,67 @@ class TestPngWriter(unittest.TestCase):
             shutil.rmtree(folder, ignore_errors=True)
 
 
+class TestScreengrabBindings(unittest.TestCase):
+    """The ctypes declarations, which fail loudly nowhere and silently anywhere.
+
+    A wrong parameter type here does not raise: it puts an argument in the
+    wrong register class and the call is undefined from that point on. That is
+    how the monitor callback was first written, and it wedged the Windows
+    build while every other platform sailed past.
+    """
+
+    def test_the_monitor_callback_matches_the_windows_declaration(self):
+        import ctypes
+
+        from fenixvault import screengrab
+        if screengrab.MONITOR_ENUM_PROC is None:
+            self.skipTest("MonitorEnumProc only exists on Windows")
+        from ctypes import wintypes
+        self.assertEqual(
+            screengrab.MONITOR_ENUM_PROC._argtypes_,
+            (ctypes.c_void_p, ctypes.c_void_p,
+             ctypes.POINTER(wintypes.RECT), wintypes.LPARAM),
+            "MonitorEnumProc takes HMONITOR, HDC, LPRECT and an LPARAM; an "
+            "LPARAM is a pointer-sized integer, never a float")
+        self.assertEqual(screengrab.MONITOR_ENUM_PROC._restype_, wintypes.BOOL)
+
+    def test_capture_degrades_quietly_off_windows(self):
+        from fenixvault import screengrab
+        if screengrab.IS_WINDOWS:
+            self.skipTest("this is the non-Windows fallback")
+        self.assertEqual(screengrab.capture_all(), [])
+        self.assertEqual(screengrab.list_monitors(), [])
+
+    def test_a_monitor_describes_itself_for_the_report(self):
+        from fenixvault.screengrab import MonitorInfo
+        monitor = MonitorInfo("\\\\.\\DISPLAY1", 0, 0, 2560, 1440, True)
+        self.assertEqual(monitor.width, 2560)
+        self.assertEqual(monitor.height, 1440)
+        self.assertIn("2560x1440", monitor.describe())
+        self.assertIn("primary", monitor.describe())
+
+    def test_save_shots_writes_one_png_per_shot(self):
+        from fenixvault.screengrab import Shot, save_shots
+        folder = tempfile.mkdtemp()
+        try:
+            shots = [Shot("desktop-all-screens", 2, 1, bytes(range(6)))]
+            written = save_shots(shots, folder)
+            self.assertEqual(len(written), 1)
+            with open(written[0], "rb") as handle:
+                self.assertEqual(handle.read(8), PNG_SIGNATURE)
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+
+    def test_a_shot_with_impossible_dimensions_is_skipped_not_crashed(self):
+        from fenixvault.screengrab import Shot, save_shots
+        folder = tempfile.mkdtemp()
+        try:
+            bad = [Shot("broken", 100, 100, b"\x00\x01\x02")]
+            self.assertEqual(save_shots(bad, folder), [])
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+
+
 class TestReport(unittest.TestCase):
     def _snapshot(self) -> SysSnapshot:
         snapshot = SysSnapshot()
@@ -173,6 +234,9 @@ class FakeProbes:
             mock.patch.object(sysinfo, "_run", fake_run),
             mock.patch.object(sysinfo.appdetect, "detect",
                               lambda: sysinfo.appdetect.Detection()),
+            # Nothing here should depend on what screens are plugged in, and a
+            # CI runner has none worth asking about.
+            mock.patch.object(sysinfo.screengrab, "list_monitors", lambda: []),
         ]
         for patch in self._patches:
             patch.start()
