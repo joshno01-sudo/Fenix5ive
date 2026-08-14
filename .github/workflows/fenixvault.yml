@@ -141,8 +141,11 @@ jobs:
           Set-Content work\source\Art\decal.plt 'plotter path'
           New-Item -ItemType Directory -Force -Path work\usb | Out-Null
 
+          # Longer than the rest: this one takes a real system snapshot,
+          # which shells out to PowerShell for every section.
           Invoke-Vault .\dist\FenixVault.exe `
-            @('--no-gui', '--backup', '--from', 'work\source', '--to', 'work\usb')
+            @('--no-gui', '--backup', '--from', 'work\source', '--to', 'work\usb') `
+            300
 
           $made = @(Get-ChildItem work\usb -Directory)
           if ($made.Count -ne 1) {
@@ -151,6 +154,21 @@ jobs:
           $backup = $made[0].FullName
           if (-not (Test-Path "$backup\RESTORE.exe")) {
             throw "the restore program was not placed in the backup"
+          }
+          # The snapshot is on by default, so a real run must produce the
+          # rebuild page and the folder behind it.
+          if (-not (Test-Path "$backup\REBUILD-THIS-PC.html")) {
+            throw "the rebuild report was not written"
+          }
+          if (-not (Test-Path "$backup\SystemSnapshot")) {
+            throw "the SystemSnapshot folder was not written"
+          }
+          $shots = @(Get-ChildItem "$backup\SystemSnapshot\Screenshots" `
+                       -Filter *.png -ErrorAction SilentlyContinue)
+          Write-Host "Rebuild report written; $($shots.Count) screenshot(s) captured."
+          $report = Get-Content "$backup\REBUILD-THIS-PC.html" -Raw
+          if ($report -notmatch 'How to rebuild') {
+            throw "the rebuild report does not look like the expected page"
           }
 
           Remove-Item work\source -Recurse -Force

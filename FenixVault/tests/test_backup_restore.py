@@ -75,6 +75,13 @@ class BackupRestoreCase(unittest.TestCase):
     def do_backup(self, extensions=None, backup_dir=None, **kwargs):
         extensions = extensions or catalog.default_extensions()
         backup_dir = backup_dir or os.path.join(self.usb, "Backup")
+        # capture_snapshot defaults to True because that is what the product
+        # should do. These tests are about copying files, so they opt out:
+        # otherwise every one of them shells out to PowerShell a dozen times
+        # and the suite takes minutes on Windows while staying instant on
+        # Linux, where the probes return immediately. Snapshot behaviour has
+        # its own tests in test_snapshot.py.
+        kwargs.setdefault("capture_snapshot", False)
         result = run_backup(self.selection, self.excludes, extensions,
                             backup_dir, BackupOptions(**kwargs))
         return backup_dir, result
@@ -248,7 +255,8 @@ class TestBackup(BackupRestoreCase):
         backup_dir = os.path.join(self.usb, "Partial")
         result = run_backup(self.selection, self.excludes,
                             catalog.default_extensions(), backup_dir,
-                            BackupOptions(), cancel=cancel)
+                            BackupOptions(capture_snapshot=False),
+                            cancel=cancel)
         self.assertTrue(result.cancelled)
         info = manifest.read_info(backup_dir)
         self.assertFalse(info.complete)
