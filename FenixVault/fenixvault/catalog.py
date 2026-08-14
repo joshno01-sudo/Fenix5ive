@@ -159,8 +159,8 @@ CATEGORIES: list[Category] = [
     Category(
         key="print",
         name="Print & RIP Files",
-        blurb="Spooled print jobs, PostScript and the colour profiles that keep "
-              "your output matching.",
+        blurb="RIP jobs, spooled print files and the media and colour profiles "
+              "that keep your output matching.",
         default_on=True,
         types=_t([
             (".prn", "Print / plotter spool file"),
@@ -171,6 +171,12 @@ CATEGORIES: list[Category] = [
             (".icc", "Colour profile"),
             (".icm", "Colour profile"),
             (".ppd", "Printer description"),
+            # A saved VersaWorks job can embed the artwork it was printed from,
+            # so one of these is often the only copy of a finished layout left.
+            (".rvw", "Roland VersaWorks job"),
+            (".oml", "ONYX media profile"),
+            (".prninst", "ONYX printer / media install file"),
+            (".oms", "HP Latex media preset"),
         ]),
     ),
     Category(
@@ -528,6 +534,8 @@ PROGRAM_HINTS: list[tuple[str, tuple[str, ...]]] = [
     ("flexi", ("vinyl", "design")),
     ("signlab", ("vinyl", "design")),
     ("onyx", ("print",)),
+    ("postershop", ("print",)),
+    ("rip-queue", ("print",)),
     ("versaworks", ("print",)),
     ("caldera", ("print",)),
     ("wasatch", ("print",)),
