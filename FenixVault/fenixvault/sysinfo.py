@@ -25,7 +25,11 @@ from .platformutil import IS_WINDOWS, human_bytes
 # Stops a console window flashing up for every probe; we are a windowed app.
 CREATE_NO_WINDOW = 0x08000000
 
-DEFAULT_TIMEOUT = 60
+# Deliberately short. Every probe here answers in a second or two on a
+# healthy machine; a longer wait means something is wedged, and the
+# whole point is to record what we can and move on rather than leave
+# someone watching a progress bar before a reinstall.
+DEFAULT_TIMEOUT = 30
 
 
 @dataclass

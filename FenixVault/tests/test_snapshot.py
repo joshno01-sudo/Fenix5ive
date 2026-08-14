@@ -13,7 +13,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fenixvault import catalog, manifest, report, sysinfo  # noqa: E402
 from fenixvault.backup import BackupOptions, run_backup  # noqa: E402
-from fenixvault.platformutil import IS_WINDOWS  # noqa: E402
 from fenixvault.pngwrite import (PNG_SIGNATURE, bgra_to_rgb,  # noqa: E402
                                  encode_png, write_png)
 from fenixvault.selection import ExcludeRules, FolderSelection  # noqa: E402
@@ -139,6 +138,51 @@ class TestReport(unittest.TestCase):
         self.assertIn("SystemSnapshot/Screenshots/desktop-all.png", html)
 
 
+class FakeProbes:
+    """Stands in for the real probes while testing the collector.
+
+    Without this the suite would run a genuine eighteen-probe system inventory
+    on every Windows machine it is run on -- minutes of PowerShell per test,
+    and results that differ from one PC to the next. What is being tested here
+    is the collector's handling of probes, not the probes themselves.
+    """
+
+    def __init__(self, output: str = "some output", error: str = "") -> None:
+        self.output = output
+        self.error = error
+        self.calls: list[str] = []
+        self._patches: list = []
+
+    def __enter__(self) -> "FakeProbes":
+        from unittest import mock
+
+        def fake_shell(script, timeout=0):
+            self.calls.append(script)
+            return self.output, self.error
+
+        def fake_run(command, timeout=0):
+            self.calls.append(" ".join(command))
+            return self.output, self.error
+
+        probes = [sysinfo.Probe("printers", "Printers and cutters", "noop"),
+                  sysinfo.Probe("wifi_probe", "Something secret", "noop",
+                                sensitive=True)]
+        self._patches = [
+            mock.patch.object(sysinfo, "PROBES", probes),
+            mock.patch.object(sysinfo, "_powershell", fake_shell),
+            mock.patch.object(sysinfo, "_run", fake_run),
+            mock.patch.object(sysinfo.appdetect, "detect",
+                              lambda: sysinfo.appdetect.Detection()),
+        ]
+        for patch in self._patches:
+            patch.start()
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        for patch in self._patches:
+            patch.stop()
+
+
 class TestSysinfo(unittest.TestCase):
     def setUp(self) -> None:
         self.folder = tempfile.mkdtemp(prefix="fenixvault-snap-")
@@ -146,19 +190,51 @@ class TestSysinfo(unittest.TestCase):
     def tearDown(self) -> None:
         shutil.rmtree(self.folder, ignore_errors=True)
 
-    def test_collect_never_raises_and_always_reports_something(self):
-        snapshot = sysinfo.collect(self.folder, include_screenshots=False)
-        self.assertTrue(snapshot.sections)
-        for section in snapshot.sections:
-            self.assertTrue(section.title)
-        if not IS_WINDOWS:
-            # Off Windows every probe should fail cleanly rather than blow up.
-            self.assertTrue(snapshot.failed)
-
-    def test_a_section_lookup_works(self):
-        snapshot = sysinfo.collect(self.folder, include_screenshots=False)
+    def test_collect_gathers_every_probe(self):
+        with FakeProbes() as fake:
+            snapshot = sysinfo.collect(self.folder, include_screenshots=False)
+        self.assertTrue(fake.calls)
         self.assertIsNotNone(snapshot.section("printers"))
         self.assertIsNone(snapshot.section("nothing-like-this"))
+        for section in snapshot.sections:
+            self.assertTrue(section.title)
+
+    def test_a_probe_that_fails_is_recorded_not_raised(self):
+        with FakeProbes(output="", error="Access is denied."):
+            snapshot = sysinfo.collect(self.folder, include_screenshots=False)
+        printers = snapshot.section("printers")
+        self.assertIsNotNone(printers)
+        self.assertEqual(printers.error, "Access is denied.")
+        self.assertFalse(printers.ok)
+        self.assertTrue(snapshot.failed)
+
+    def test_collecting_is_stopped_by_the_cancel_flag(self):
+        import threading as _threading
+        cancel = _threading.Event()
+        cancel.set()
+        with FakeProbes() as fake:
+            sysinfo.collect(self.folder, include_screenshots=False,
+                            cancel=cancel)
+        self.assertEqual(fake.calls, [],
+                         "a cancelled snapshot should not run any probe")
+
+    def test_progress_is_reported(self):
+        seen: list[str] = []
+        with FakeProbes():
+            sysinfo.collect(self.folder, include_screenshots=False,
+                            progress=seen.append)
+        self.assertTrue(seen)
+
+    def test_the_real_probe_table_is_sane(self):
+        # The probes themselves are not run here, but they should at least be
+        # well-formed and unique.
+        keys = [probe.key for probe in sysinfo.PROBES]
+        self.assertEqual(len(keys), len(set(keys)), "duplicate probe key")
+        for probe in sysinfo.PROBES:
+            self.assertTrue(probe.title and probe.script)
+            self.assertGreater(probe.timeout, 0)
+        self.assertIn("bitlocker", keys)
+        self.assertIn("printers", keys)
 
     def test_an_empty_section_is_not_counted_as_a_secret(self):
         snapshot = SysSnapshot()
@@ -183,11 +259,15 @@ class TestSnapshotInsideABackup(unittest.TestCase):
     def tearDown(self) -> None:
         shutil.rmtree(self.root, ignore_errors=True)
 
-    def _backup(self, **kwargs) -> tuple[str, object]:
+    def _backup(self, probe_error: str = "", **kwargs) -> tuple[str, object]:
         backup_dir = os.path.join(self.root, "USB", "Backup")
-        result = run_backup(self.selection, ExcludeRules(),
-                            catalog.default_extensions(), backup_dir,
-                            BackupOptions(snapshot_screenshots=False, **kwargs))
+        # Stubbed probes: a backup test must not depend on what this particular
+        # machine happens to have installed, nor spend minutes finding out.
+        with FakeProbes(output="" if probe_error else "ok", error=probe_error):
+            result = run_backup(self.selection, ExcludeRules(),
+                                catalog.default_extensions(), backup_dir,
+                                BackupOptions(snapshot_screenshots=False,
+                                              **kwargs))
         return backup_dir, result
 
     def test_the_report_is_written_beside_the_files(self):
@@ -206,9 +286,9 @@ class TestSnapshotInsideABackup(unittest.TestCase):
         self.assertIsNone(result.snapshot_report)
         self.assertFalse(manifest.read_info(backup_dir).has_snapshot)
 
-    def test_files_are_still_copied_when_the_snapshot_has_nothing_to_say(self):
-        # Off Windows every probe fails; the file copy must be untouched by it.
-        backup_dir, result = self._backup(capture_snapshot=True)
+    def test_files_are_still_copied_when_every_probe_fails(self):
+        _backup_dir, result = self._backup(capture_snapshot=True,
+                                           probe_error="Access is denied.")
         self.assertEqual(result.files_copied, 1)
         self.assertTrue(result.ok)
         self.assertEqual(result.files_failed, 0)
@@ -217,12 +297,11 @@ class TestSnapshotInsideABackup(unittest.TestCase):
         # backup-report.txt is about files that did not get copied. Listing
         # "this PC has no BitLocker" there would send someone hunting for data
         # loss that never happened.
-        _backup_dir, result = self._backup(capture_snapshot=True)
-        joined = " ".join(result.errors)
-        self.assertNotIn("only available on Windows", joined)
-        if not IS_WINDOWS:
-            self.assertGreater(result.snapshot_failed_sections, 0)
-            self.assertIsNone(result.report_path)
+        _backup_dir, result = self._backup(capture_snapshot=True,
+                                           probe_error="Access is denied.")
+        self.assertGreater(result.snapshot_failed_sections, 0)
+        self.assertNotIn("Access is denied.", " ".join(result.errors))
+        self.assertIsNone(result.report_path)
 
 
 if __name__ == "__main__":
