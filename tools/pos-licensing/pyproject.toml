@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pos-licensing"
+version = "1.0.0"
+description = "License keys, activation server and kill switch for the Fenix POS — one paid seat, one running copy."
+readme = "README.md"
+requires-python = ">=3.10"
+# No runtime dependencies on purpose, same as the other shop tools: the
+# crypto, the HTTP server and the database are all standard library.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+pos-license = "pos_licensing.cli:main"
+
+[tool.setuptools]
+packages = ["pos_licensing"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning"]
