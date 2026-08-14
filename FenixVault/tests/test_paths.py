@@ -82,6 +82,22 @@ class TestCatalog(unittest.TestCase):
         for ext in (".mp4", ".mov", ".mp3"):
             self.assertNotIn(ext, defaults)
 
+    def test_rip_formats_are_covered_and_on_by_default(self):
+        defaults = catalog.default_extensions()
+        for ext, label in ((".rvw", "Roland VersaWorks job"),
+                           (".oml", "ONYX media profile"),
+                           (".prninst", "ONYX printer / media install file"),
+                           (".oms", "HP Latex media preset")):
+            self.assertEqual(catalog.category_of(ext), "print", ext)
+            self.assertEqual(catalog.label_of(ext), label)
+            self.assertIn(ext, defaults, f"{ext} should be on by default")
+
+    def test_rip_software_switches_on_the_print_category(self):
+        for program in ("ONYX PosterShop 25", "ONYX RIP-Queue",
+                        "Roland VersaWorks 6"):
+            self.assertIn("print", catalog.categories_for_programs([program]),
+                          program)
+
     def test_category_lookup(self):
         self.assertEqual(catalog.category_of(".AI"), "design")
         self.assertEqual(catalog.category_of(".plt"), "vinyl")
