@@ -203,6 +203,11 @@ class FenixVaultApp:
         ttk.Checkbutton(options, text="Skip hidden and system folders",
                         variable=self.var_skip_hidden,
                         command=self._on_excludes_changed).pack(anchor="w")
+        self.var_skip_cloud = tk.BooleanVar(value=True)
+        ttk.Checkbutton(options,
+                        text="Skip online-only files (OneDrive, Dropbox)",
+                        variable=self.var_skip_cloud,
+                        command=self._on_excludes_changed).pack(anchor="w")
 
         self.scan_button = ttk.Button(
             body, text="Look through these folders", command=self.start_scan)
@@ -501,7 +506,8 @@ class FenixVaultApp:
 
     def _current_excludes(self) -> ExcludeRules:
         return ExcludeRules(skip_system=self.var_skip_system.get(),
-                            skip_hidden=self.var_skip_hidden.get())
+                            skip_hidden=self.var_skip_hidden.get(),
+                            skip_cloud_placeholders=self.var_skip_cloud.get())
 
     def _on_excludes_changed(self) -> None:
         self.excludes = self._current_excludes()
@@ -968,6 +974,15 @@ class FenixVaultApp:
                 text=f"Found {result.total_files:,} files "
                      f"({human_bytes(result.total_bytes)}) in "
                      f"{result.dirs_scanned:,} folders.")
+        if result.placeholders_skipped:
+            self.status_label.configure(
+                text=self.status_label.cget("text")
+                + f"  {result.placeholders_skipped:,} online-only.")
+            self.snapshot_banner.set(
+                f"{result.placeholders_skipped:,} files "
+                f"({human_bytes(result.placeholder_bytes)}) live in the cloud, "
+                f"not on this PC, and are being left there. Untick the option "
+                f"on the left to download and copy them instead.", "warn")
         if result.errors:
             self.status_label.configure(
                 text=self.status_label.cget("text")
@@ -990,6 +1005,11 @@ class FenixVaultApp:
 
     def _show_backup_result(self, result: BackupResult) -> None:
         lines = [result.summary(), "", f"Saved in:\n{result.backup_dir}"]
+        if result.cloud_list_path:
+            lines += ["", f"{result.placeholders_skipped:,} files "
+                          f"({human_bytes(result.placeholder_bytes)}) were left "
+                          f"in the cloud because their contents are not on this "
+                          f"PC. They are listed in cloud-only-files.txt."]
         if result.snapshot_report:
             lines += ["", "This PC's setup was recorded. Open "
                           "REBUILD-THIS-PC.html in the backup folder to see "

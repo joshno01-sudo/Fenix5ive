@@ -61,6 +61,20 @@ SECTIONS: list[tuple[str, str]] = [
      "and your Windows product key, it says so at the top in red, and the "
      "drive you back up to should be kept somewhere safe."),
 
+    ("Files that live in the cloud",
+     "OneDrive and Dropbox can show files that are not really on this "
+     "computer. They look completely normal in Explorer, but the contents sit "
+     "online and only come down when something opens them.\n\n"
+     "Copying those would mean downloading the whole cloud account over your "
+     "internet connection first -- which on a shop line can take days. So they "
+     "are left alone by default, and the backup gets a file called "
+     "cloud-only-files.txt listing every one of them and where it lives.\n\n"
+     "They are not lost: they are still in that cloud account. If you want "
+     "them in the backup as well, either untick 'Skip online-only files' on "
+     "the left, or right-click the folder in Explorer, choose 'Always keep on "
+     "this device', wait for it to finish downloading, and run the backup "
+     "again."),
+
     ("How the copy is laid out",
      "The backup folder holds a folder called Data, and inside that the "
      "original folder structure is reproduced exactly:\n\n"

@@ -76,6 +76,38 @@ def norm(path: str) -> str:
     return path.rstrip("/") or "/"
 
 
+# --------------------------------------------------------------------------
+# Cloud placeholders
+# --------------------------------------------------------------------------
+
+# OneDrive Files On-Demand, Dropbox Smart Sync and iCloud all show files that
+# look completely ordinary in Explorer but hold no data on this disk. Opening
+# one silently downloads it. A backup that reads them would pull down the whole
+# cloud account over the user's connection -- which on a shop line can be days,
+# and on a metered one, money.
+#
+# Windows marks them with these attributes. RECALL_ON_DATA_ACCESS is the one
+# modern sync clients use; the other two cover older clients and archival
+# storage, where reading is expensive for the same reason.
+FILE_ATTRIBUTE_OFFLINE = 0x00001000
+FILE_ATTRIBUTE_RECALL_ON_OPEN = 0x00040000
+FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS = 0x00400000
+
+CLOUD_PLACEHOLDER_ATTRIBUTES = (FILE_ATTRIBUTE_OFFLINE
+                                | FILE_ATTRIBUTE_RECALL_ON_OPEN
+                                | FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS)
+
+
+def file_attributes(stat_result) -> int:
+    """Windows attribute bits from a stat result, or 0 on other platforms."""
+    return getattr(stat_result, "st_file_attributes", 0)
+
+
+def is_cloud_placeholder(attributes: int) -> bool:
+    """True when the file's contents live in the cloud rather than on disk."""
+    return bool(attributes & CLOUD_PLACEHOLDER_ATTRIBUTES)
+
+
 def is_ancestor(parent: str, child: str) -> bool:
     """True when *child* sits strictly underneath *parent* (both normalised)."""
     if parent == child:

@@ -15,7 +15,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Callable, Iterator
 
-from .platformutil import long_path, norm
+from .platformutil import (file_attributes, is_cloud_placeholder,
+                           long_path, norm)
 from .selection import ExcludeRules, FolderSelection
 
 
@@ -42,6 +43,8 @@ class ScanResult:
     total_files: int = 0
     total_bytes: int = 0
     dirs_scanned: int = 0
+    placeholders_skipped: int = 0
+    placeholder_bytes: int = 0
     errors: list[str] = field(default_factory=list)
     cancelled: bool = False
     duration_seconds: float = 0.0
@@ -131,12 +134,18 @@ def _has_subfolder(path: str) -> bool:
 def iter_files(selection: FolderSelection, excludes: ExcludeRules,
                cancel: threading.Event | None = None,
                on_dir: Callable[[str], None] | None = None,
-               on_error: Callable[[str], None] | None = None
+               on_error: Callable[[str], None] | None = None,
+               on_placeholder: Callable[[str, int], None] | None = None
                ) -> Iterator[tuple[str, int, float, str]]:
     """Yield ``(path, size, mtime, ext)`` for every file inside the selection.
 
     Shared by the scan and the copy so the two can never disagree about which
-    files are in scope.
+    files are in scope -- including the cloud-placeholder policy, which is
+    applied here rather than in each caller so a scan can never promise files
+    the copy will then skip.
+
+    *on_placeholder* is told about each online-only file left behind, so the
+    caller can report what was not taken instead of quietly omitting it.
     """
     visited: set[str] = set()
     for root in selection.roots():
@@ -178,8 +187,15 @@ def iter_files(selection: FolderSelection, excludes: ExcludeRules,
                             stat = entry.stat(follow_symlinks=False)
                         except OSError:
                             continue
-                        yield (os.path.join(current, entry.name),
-                               stat.st_size, stat.st_mtime,
+                        full = os.path.join(current, entry.name)
+                        # The attribute bits come free with the stat we already
+                        # did, so noticing a placeholder costs nothing.
+                        if excludes.skip_cloud_placeholders and is_cloud_placeholder(
+                                file_attributes(stat)):
+                            if on_placeholder is not None:
+                                on_placeholder(full, stat.st_size)
+                            continue
+                        yield (full, stat.st_size, stat.st_mtime,
                                split_ext(entry.name))
             except PermissionError:
                 if on_error is not None:
@@ -218,9 +234,14 @@ def scan(selection: FolderSelection, excludes: ExcludeRules,
         if len(result.errors) < 500:
             result.errors.append(message)
 
+    def note_placeholder(_path: str, size: int) -> None:
+        result.placeholders_skipped += 1
+        result.placeholder_bytes += size
+
     for _path, size, _mtime, ext in iter_files(selection, excludes, cancel,
                                                on_dir=note_dir,
-                                               on_error=note_error):
+                                               on_error=note_error,
+                                               on_placeholder=note_placeholder):
         state.files_seen += 1
         state.bytes_seen += size
         if ext:

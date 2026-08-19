@@ -49,6 +49,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="skip the integrity fingerprints (faster)")
     parser.add_argument("--include-system", action="store_true",
                         help="do not skip Windows and program folders")
+    parser.add_argument("--include-cloud-files", action="store_true",
+                        help="download and copy online-only OneDrive/Dropbox "
+                             "files instead of leaving them in the cloud")
     parser.add_argument("--no-snapshot", action="store_true",
                         help="do not record how this PC is set up")
     parser.add_argument("--no-screenshots", action="store_true",
@@ -178,7 +181,9 @@ def run_cli_backup(args) -> int:
         print("None of the folders given exist.")
         return 2
 
-    excludes = ExcludeRules(skip_system=not args.include_system)
+    excludes = ExcludeRules(
+        skip_system=not args.include_system,
+        skip_cloud_placeholders=not args.include_cloud_files)
     extensions = _resolve_extensions(args)
 
     print(f"{APP_NAME} {VERSION}")
@@ -189,6 +194,10 @@ def run_cli_backup(args) -> int:
     print()
     count, size = result.files_for(extensions)
     print(f"Found {count:,} matching files ({human_bytes(size)}).")
+    if result.placeholders_skipped:
+        print(f"Leaving {result.placeholders_skipped:,} online-only files "
+              f"({human_bytes(result.placeholder_bytes)}) in the cloud. "
+              f"Use --include-cloud-files to download them.")
     if count == 0:
         print("Nothing matched the chosen file types.")
         return 1
@@ -206,6 +215,8 @@ def run_cli_backup(args) -> int:
                              f"{os.path.basename(p.current_file)[:40]}"))
     print()
     print(outcome.summary())
+    if outcome.cloud_list_path:
+        print(f"Online-only files listed in {outcome.cloud_list_path}")
     if outcome.snapshot_report:
         print(f"This PC's setup recorded in {outcome.snapshot_report}")
     if outcome.report_path:
