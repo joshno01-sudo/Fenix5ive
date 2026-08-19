@@ -26,7 +26,7 @@ from . import theme, widgets
 from .widgets import Banner, ButtonRow, Card, CheckTree, StatValue
 
 MIN_WIDTH, MIN_HEIGHT = 1060, 680
-START_WIDTH, START_HEIGHT = 1280, 800
+START_WIDTH, START_HEIGHT = 1300, 870
 
 LOADING_TAG = "__loading__"
 
@@ -69,6 +69,7 @@ class FenixVaultApp:
         self._preselect_personal_folders()
         self._refresh_types_tree()
         self._update_summary()
+        self._update_snapshot_hint()
 
         self.root.after(80, self._pump)
         self.root.after(10, self._start_detection)
@@ -306,6 +307,12 @@ class FenixVaultApp:
         ttk.Checkbutton(options,
                         text="Put the restore program in with the backup",
                         variable=self.var_payload).pack(anchor="w", side="bottom")
+        self.var_snapshot = tk.BooleanVar(value=True)
+        ttk.Checkbutton(options,
+                        text="Record this PC's setup (screens, programs, Wi-Fi)",
+                        variable=self.var_snapshot,
+                        command=self._update_snapshot_hint).pack(anchor="w",
+                                                                 side="bottom")
         self.var_incremental = tk.BooleanVar(value=True)
         ttk.Checkbutton(options,
                         text="Only copy what has changed since last time",
@@ -315,6 +322,9 @@ class FenixVaultApp:
         ttk.Checkbutton(options,
                         text="Fingerprint every file so damage can be spotted",
                         variable=self.var_verify).pack(anchor="w", side="bottom")
+
+        self.snapshot_banner = Banner(body, self.fonts, "", "info")
+        self.snapshot_banner.pack(fill="x", padx=14, pady=(0, 6), side="bottom")
 
         self.space_banner = Banner(body, self.fonts, "", "info")
         self.space_banner.pack(fill="x", padx=14, pady=(4, 8), side="bottom")
@@ -350,7 +360,7 @@ class FenixVaultApp:
                  fg=theme.FAINT, font=self.fonts.small_bold,
                  anchor="w").pack(fill="x", padx=14, pady=(8, 3))
         self.breakdown = ttk.Treeview(body, columns=("count", "size"),
-                                      show="tree", height=4, selectmode="none")
+                                      show="tree", height=3, selectmode="none")
         self.breakdown.column("#0", width=90, minwidth=70, stretch=True)
         self.breakdown.column("count", width=58, anchor="e", stretch=False)
         self.breakdown.column("size", width=72, anchor="e", stretch=False)
@@ -779,6 +789,17 @@ class FenixVaultApp:
         fits, message = estimate(count, size, destination)
         self.space_banner.set(message, "ok" if fits else "danger")
 
+    def _update_snapshot_hint(self) -> None:
+        if self.var_snapshot.get():
+            self.snapshot_banner.set(
+                "Writes REBUILD-THIS-PC.html into the backup: desktop "
+                "screenshots, installed programs, printer ports, Wi-Fi "
+                "passwords and any BitLocker key. Keep the drive safe.", "warn")
+        else:
+            self.snapshot_banner.set(
+                "Only your files will be copied. Nothing about how this PC is "
+                "set up will be recorded.", "info")
+
     def _mark_stale(self) -> None:
         self.needs_rescan = True
         if self.scan_result is not None:
@@ -890,6 +911,7 @@ class FenixVaultApp:
         options = BackupOptions(verify=self.var_verify.get(),
                                 incremental=self.var_incremental.get(),
                                 include_restore_tool=self.var_payload.get(),
+                                capture_snapshot=self.var_snapshot.get(),
                                 expected_files=count, expected_bytes=size)
 
         def work() -> None:
@@ -968,6 +990,11 @@ class FenixVaultApp:
 
     def _show_backup_result(self, result: BackupResult) -> None:
         lines = [result.summary(), "", f"Saved in:\n{result.backup_dir}"]
+        if result.snapshot_report:
+            lines += ["", "This PC's setup was recorded. Open "
+                          "REBUILD-THIS-PC.html in the backup folder to see "
+                          "the screenshots, programs, printers and Wi-Fi "
+                          "passwords."]
         if result.report_path:
             lines += ["", f"Some items were skipped. Details in:\n"
                           f"{os.path.basename(result.report_path)}"]
@@ -1020,8 +1047,30 @@ class FenixVaultApp:
         self.root.destroy()
 
 
+# Matches AppMutex in installer/FenixVault.iss, which is how the installer
+# notices the program is already running and offers to close it instead of
+# failing partway through with a locked file.
+RUNNING_MUTEX = "FenixVaultRunningMutex"
+_running_mutex = None
+
+
+def _claim_running_mutex():
+    """Hold a named mutex for the life of the process (Windows only)."""
+    if os.name != "nt":
+        return None
+    try:
+        import ctypes
+        return ctypes.windll.kernel32.CreateMutexW(None, False, RUNNING_MUTEX)
+    except Exception:
+        return None
+
+
 def launch(restore_dir: str | None = None) -> int:
     """Open the window. Returns a process exit code."""
+    # Kept in a module global rather than a local: releasing it early would let
+    # the installer overwrite the exe while the program is still running.
+    global _running_mutex
+    _running_mutex = _claim_running_mutex()
     root = tk.Tk()
     app = FenixVaultApp(root)
     if restore_dir:

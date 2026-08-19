@@ -42,6 +42,7 @@ jobs:
             python: '3.12'
           - os: windows-latest
             python: '3.12'
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
 
@@ -50,7 +51,10 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: Run the engine tests
-        run: python -m unittest discover -s tests -v
+        # Through the watchdog runner: a hang prints every thread's stack and
+        # exits, instead of sitting on the runner until it is killed and
+        # leaving no logs to work from.
+        run: python tests/run_tests.py -v --timeout 180
 
       - name: Check for unused names and typos
         run: |
@@ -58,10 +62,11 @@ jobs:
           python -m pyflakes fenixvault tests FenixVault.py
 
       - name: Smoke-test the command line
+        timeout-minutes: 4
         run: |
           python FenixVault.py --version
-          python FenixVault.py --list-drives
           python FenixVault.py --list-categories
+          python FenixVault.py --list-drives
 
   build-windows:
     name: Build FenixVault.exe
@@ -136,8 +141,11 @@ jobs:
           Set-Content work\source\Art\decal.plt 'plotter path'
           New-Item -ItemType Directory -Force -Path work\usb | Out-Null
 
+          # Longer than the rest: this one takes a real system snapshot,
+          # which shells out to PowerShell for every section.
           Invoke-Vault .\dist\FenixVault.exe `
-            @('--no-gui', '--backup', '--from', 'work\source', '--to', 'work\usb')
+            @('--no-gui', '--backup', '--from', 'work\source', '--to', 'work\usb') `
+            300
 
           $made = @(Get-ChildItem work\usb -Directory)
           if ($made.Count -ne 1) {
@@ -146,6 +154,21 @@ jobs:
           $backup = $made[0].FullName
           if (-not (Test-Path "$backup\RESTORE.exe")) {
             throw "the restore program was not placed in the backup"
+          }
+          # The snapshot is on by default, so a real run must produce the
+          # rebuild page and the folder behind it.
+          if (-not (Test-Path "$backup\REBUILD-THIS-PC.html")) {
+            throw "the rebuild report was not written"
+          }
+          if (-not (Test-Path "$backup\SystemSnapshot")) {
+            throw "the SystemSnapshot folder was not written"
+          }
+          $shots = @(Get-ChildItem "$backup\SystemSnapshot\Screenshots" `
+                       -Filter *.png -ErrorAction SilentlyContinue)
+          Write-Host "Rebuild report written; $($shots.Count) screenshot(s) captured."
+          $report = Get-Content "$backup\REBUILD-THIS-PC.html" -Raw
+          if ($report -notmatch 'How to rebuild') {
+            throw "the rebuild report does not look like the expected page"
           }
 
           Remove-Item work\source -Recurse -Force
@@ -167,4 +190,72 @@ jobs:
         with:
           name: FenixVault-windows
           path: FenixVault/dist/FenixVault.exe
+          if-no-files-found: error
+
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) {
+            Write-Host 'Inno Setup not on the image; installing it.'
+            choco install innosetup --no-progress -y | Out-String | Write-Host
+          }
+          if (-not (Test-Path $iscc)) {
+            throw "Inno Setup did not install; ISCC.exe not found at $iscc"
+          }
+          & $iscc installer\FenixVault.iss
+          if ($LASTEXITCODE -ne 0) { throw "iscc exited with $LASTEXITCODE" }
+
+          $setup = 'installer\Output\FenixVault-Setup.exe'
+          if (-not (Test-Path $setup)) { throw 'the installer was not produced' }
+          $size = [math]::Round((Get-Item $setup).Length / 1MB, 1)
+          Write-Host "Built FenixVault-Setup.exe ($size MB)"
+
+      - name: Check the installer installs and uninstalls silently
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $setup = Resolve-Path 'installer\Output\FenixVault-Setup.exe'
+          $target = 'C:\Program Files\Fenix Vault'
+
+          # /VERYSILENT proves the whole install runs unattended; without
+          # /NORESTART a reboot request would hang the runner.
+          $p = Start-Process -FilePath $setup `
+                 -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' `
+                 -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "install exited with $($p.ExitCode)" }
+
+          $installed = Join-Path $target 'FenixVault.exe'
+          if (-not (Test-Path $installed)) {
+            throw "FenixVault.exe is not in $target after installing"
+          }
+          Write-Host "Installed to $installed"
+
+          # And prove the installed copy is the working program, not just bytes.
+          $proc = [System.Diagnostics.Process]::Start(
+            [System.Diagnostics.ProcessStartInfo]@{
+              FileName = $installed; Arguments = '--version'
+              UseShellExecute = $false; RedirectStandardOutput = $true })
+          $out = $proc.StandardOutput.ReadToEnd()
+          if (-not $proc.WaitForExit(60000)) { throw 'installed exe did not exit' }
+          Write-Host "Installed copy reports: $($out.Trim())"
+          if ($out -notmatch 'Fenix Vault') { throw 'unexpected version output' }
+
+          $uninstaller = Join-Path $target 'unins000.exe'
+          if (Test-Path $uninstaller) {
+            $u = Start-Process -FilePath $uninstaller `
+                   -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' `
+                   -Wait -PassThru
+            if ($u.ExitCode -ne 0) { throw "uninstall exited with $($u.ExitCode)" }
+            Write-Host 'Uninstalled cleanly.'
+          } else {
+            throw 'no uninstaller was created'
+          }
+
+      - name: Upload FenixVault-Setup.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: FenixVault-installer
+          path: FenixVault/installer/Output/FenixVault-Setup.exe
           if-no-files-found: error

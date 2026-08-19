@@ -49,6 +49,10 @@ def build_parser() -> argparse.ArgumentParser:
                         help="skip the integrity fingerprints (faster)")
     parser.add_argument("--include-system", action="store_true",
                         help="do not skip Windows and program folders")
+    parser.add_argument("--no-snapshot", action="store_true",
+                        help="do not record how this PC is set up")
+    parser.add_argument("--no-screenshots", action="store_true",
+                        help="record the settings but take no screenshots")
 
     parser.add_argument("--conflict", choices=[CONFLICT_SKIP, CONFLICT_OVERWRITE,
                                                CONFLICT_KEEP_BOTH],
@@ -192,6 +196,8 @@ def run_cli_backup(args) -> int:
     backup_dir = os.path.join(args.destination, default_backup_name())
     print(f"Copying to {backup_dir}")
     options = BackupOptions(verify=not args.no_verify,
+                            capture_snapshot=not args.no_snapshot,
+                            snapshot_screenshots=not args.no_screenshots,
                             expected_files=count, expected_bytes=size)
     outcome = run_backup(selection, excludes, extensions, backup_dir, options,
                          progress=lambda p: _progress_line(
@@ -200,6 +206,8 @@ def run_cli_backup(args) -> int:
                              f"{os.path.basename(p.current_file)[:40]}"))
     print()
     print(outcome.summary())
+    if outcome.snapshot_report:
+        print(f"This PC's setup recorded in {outcome.snapshot_report}")
     if outcome.report_path:
         print(f"Some items were skipped - see {outcome.report_path}")
     return 0 if outcome.ok else 1

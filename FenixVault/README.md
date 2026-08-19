@@ -45,11 +45,17 @@ folder is recorded in `backup-report.txt` and the copy carries on.
 
 ```
 FenixVault-Backup-2026-08-12_1432\
-├── HOW-TO-RESTORE.txt      plain-English instructions
-├── RESTORE.exe             the program itself, ready to put it all back
-├── backup-info.json        where it came from, totals, settings used
-├── manifest.jsonl          one line per file, with a SHA-256 fingerprint
-├── backup-report.txt       only present if something could not be copied
+├── HOW-TO-RESTORE.txt       plain-English instructions
+├── RESTORE.exe              the program itself, ready to put it all back
+├── REBUILD-THIS-PC.html     how this computer was set up
+├── backup-info.json         where it came from, totals, settings used
+├── manifest.jsonl           one line per file, with a SHA-256 fingerprint
+├── backup-report.txt        only present if something could not be copied
+├── SystemSnapshot\
+│   ├── Screenshots\         one PNG per monitor, plus the whole desktop
+│   ├── WiFi\                one XML per saved network, passwords included
+│   ├── Registry\            exported preference keys, ready to double-click
+│   └── Wallpaper\           the image that was on the desktop
 └── Data\
     └── C\Users\Josh\Documents\Logos\logo.ai      ← the tree, mirrored exactly
 ```
@@ -90,19 +96,66 @@ streaming, so it costs one read rather than two. The fingerprint is checked
 again on restore, so a drive that has gone bad is reported by filename rather
 than discovered years later.
 
+## Wiping the PC and starting over
+
+Files are only half of a rebuild. The other half is everything that lives
+nowhere you can copy: which printer is on which IP, the Wi-Fi password nobody
+has written down for years, the BitLocker key without which the old drive is a
+brick.
+
+With **Record this PC's setup** ticked, the backup also gets
+`REBUILD-THIS-PC.html` — one page you can open on your phone while reinstalling
+Windows:
+
+- **Pictures of the desktop**, every monitor, exactly as it looked
+- **Installed programs**, as a reinstall checklist
+- **Printers and cutters** with their drivers and port addresses
+- **Wi-Fi profiles**, exported so they can be imported on the new install
+- **Drive encryption status and recovery keys**
+- **Windows product key** from the machine's firmware
+- Network adapters, mapped drives, startup items, services, scheduled tasks
+- Screen layout, time zone, language, keyboard, power plan
+- Fonts, wallpaper, what was on the Desktop
+- Exported registry keys for Explorer and desktop preferences
+
+Every reading is taken read-only; nothing on the machine is changed to collect
+it. Screenshots use a PNG encoder written into the program, so there is still
+no dependency to install.
+
+> **That page can contain Wi-Fi passwords, a BitLocker recovery key and your
+> Windows product key.** It says so at the top, in red. Keep the drive safe.
+
+![The rebuild report](docs/screenshot-rebuild-report.png)
+
 ## Running it
 
 ### The easy way
 
-Download `FenixVault.exe` from the **Actions** tab of this repository (the
-*Fenix Vault* workflow, artifact `FenixVault-windows`). It is one file with no
-installer and no dependencies. Double-click it.
+Download **`FenixVault-Setup.exe`** from the **Actions** tab (the *Fenix Vault*
+workflow, artifact `FenixVault-installer`). Double-click it, press Install, and
+it opens the program when it finishes. It adds Start Menu and Desktop
+shortcuts and an entry in Add/Remove Programs.
 
-### Building the .exe yourself
+Windows will show a blue "Windows protected your PC" box, because the installer
+is not code-signed — a certificate costs a few hundred a year. Click **More
+info → Run anyway**. If you would rather skip the installer entirely, the
+`FenixVault-windows` artifact is the bare `FenixVault.exe`: one file, nothing
+to install, double-click it.
+
+### Building it yourself
 
 Install [Python](https://www.python.org/downloads/) (tick *Add Python to PATH*),
 then double-click `build\build-windows.bat`. It runs the tests and leaves the
 finished program at `dist\FenixVault.exe`.
+
+For the installer as well, also install
+[Inno Setup](https://jrsoftware.org/isdl.php) and run:
+
+```
+iscc installer\FenixVault.iss
+```
+
+which writes `installer\Output\FenixVault-Setup.exe`.
 
 ### From source
 
@@ -140,6 +193,10 @@ tested without a display.
 | `backup.py` | The copy engine |
 | `restore.py` | The put-it-all-back engine |
 | `payload.py` | Makes a backup folder able to restore itself |
+| `pngwrite.py` | A small PNG encoder, so screenshots need no image library |
+| `screengrab.py` | Desktop capture through GDI, across every monitor |
+| `sysinfo.py` | How this PC is set up, gathered read-only |
+| `report.py` | The rebuild page you read while reinstalling |
 | `ui/` | The three-panel window, the restore window, the help window |
 
 A few decisions worth explaining:

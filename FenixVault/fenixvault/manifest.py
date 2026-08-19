@@ -73,6 +73,8 @@ class BackupInfo:
     selected_extensions: list[str] = field(default_factory=list)
     selected_roots: list[str] = field(default_factory=list)
     complete: bool = False
+    has_snapshot: bool = False
+    snapshot_has_secrets: bool = False
 
     @classmethod
     def from_json(cls, raw: dict) -> "BackupInfo":
