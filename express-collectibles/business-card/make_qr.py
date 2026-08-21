@@ -19,13 +19,13 @@ LINES = [
     "FN:Neal Knebel",
     "ORG:Express Collectibles",
     "TITLE:Owner",
-    "TEL;TYPE=WORK,VOICE:+16188826660",
-    "ADR;TYPE=WORK:;;806 3rd St;Highland;IL;62249;USA",
-    "EMAIL;TYPE=INTERNET:neal_knebel@yahoo.com",
-    "URL:https://expresscollectibles.com",
-    "NOTE:TCG / Sports Cards / Video Games - Buy / Sell / Trade. "
-    "Whatnot + eBay + Facebook: @expresscollectibles. "
-    "Instagram + TikTok: @nealknebelofficial.",
+    "TEL;TYPE=WORK,VOICE:+16188821041",
+    "ADR;TYPE=WORK:;;906 Broadway;Highland;IL;62249;USA",
+    "EMAIL;TYPE=INTERNET:neal@expresscollectibles.com",
+    "URL:https://www.expresscollectibles.com",
+    "NOTE:Video Games / Consoles / Accessories / TCG / Collectibles "
+    "- Buy / Sell / Trade. Whatnot + Facebook: @expresscollectibles. "
+    "eBay: expressplug. Instagram + TikTok: @nealknebelofficial.",
     "END:VCARD",
 ]
 VCARD = "\r\n".join(LINES) + "\r\n"
@@ -44,7 +44,7 @@ for ecc in ("m", "l"):
 # ECC within the version when there is room).
 qr = segno.make(VCARD, error="l")
 qr.save("qr/express-collectibles-vcard.svg", scale=10, border=4,
-        dark="#16122b", light="#ffffff")
+        dark="#150f2e", light="#ffffff")
 
 svg = open("qr/express-collectibles-vcard.svg").read()
 d = re.search(r'<path class="qrline"[^>]* d="([^"]+)"', svg).group(1)

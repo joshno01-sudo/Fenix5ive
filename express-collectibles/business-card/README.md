@@ -1,9 +1,13 @@
 # Express Collectibles — Business Card
 
-Retro 8-bit arcade business card for Express Collectibles (Neal Knebel, owner).
-Front carries the full contact block and every selling/social handle; the back
-is a "SCAN ME" vCard QR code, so a scan saves the complete contact card even
-when it's the last physical card on the counter.
+Neon-arcade business card for Express Collectibles (Neal Knebel, owner),
+styled directly from www.expresscollectibles.com — same tokens as the site's
+default "Miami Sunset" colorway: bg `#150f2e`, deep `#0b071a`, neon pink
+`#ff3ea5`, electric cyan `#29e6ff`, arcade gold `#ffc857`, chrome-gradient
+italic wordmark, category ticker bar, synthwave grid floor. Front carries the
+full contact block and every selling/social handle; the back is a "SCAN ME"
+vCard QR code, so a scan saves the complete contact card even when it's the
+last physical card on the counter.
 
 Editable design canvas (front + back artboards, click-to-edit):
 https://claude.ai/code/artifact/33c1debb-1641-42bd-8e9c-effb24549dc6
@@ -17,28 +21,29 @@ https://claude.ai/code/artifact/33c1debb-1641-42bd-8e9c-effb24549dc6
 | `front-trimmed-preview…` / `back-trimmed-preview…` `.png` | What the card looks like after trimming to 3.5 × 2 in — for proofing, not for printing |
 
 Specs: US standard 3.5 × 2 in trim, 1/16 in bleed on each side, text kept
-≥ 1/8 in inside the trim line. Designed at 96 px/in (348 × 204 px artboards),
-rendered at 300 dpi.
+inside the safe zone. Designed at 96 px/in (348 × 204 px artboards), rendered
+at 300 dpi. Fonts are the site's own stack (Roboto / Roboto Mono, embedded
+OFL latin subsets).
 
 ## What's on the card
 
-- **Neal Knebel — Owner** · Express Collectibles
-- 806 3rd St, Highland, IL 62249 · (618) 882-6660 · neal_knebel@yahoo.com
-- expresscollectibles.com
-- Whatnot / eBay / Facebook: **@expresscollectibles** · Instagram / TikTok: **@nealknebelofficial**
-- Back QR: vCard 3.0 (v13, ECC L, 69×69 modules ≈ 0.41 mm/module at print size —
-  machine-verified to decode from the 300-dpi render). Contains everything above
-  plus a note with all handles.
+- Ticker: **Video Games ◆ Consoles ▲ Accessories ◆ TCG ▲ Collectibles**
+- **Neal Knebel — Owner** · Express Collectibles · Buy / Sell / Trade
+- (618) 882-1041 · neal@expresscollectibles.com · 906 Broadway, Highland, IL 62249
+- www.expresscollectibles.com
+- Whatnot / Facebook: **@expresscollectibles** · eBay store: **expressplug**
+  (ebay.com/str/expressplug, from the site footer) · Instagram / TikTok:
+  **@nealknebelofficial**
+- Back QR: vCard 3.0 (v15, ECC L — machine-verified to decode from the
+  300-dpi render with every field intact)
 
-### ⚠️ Verify before sending to print
+### ⚠️ Before sending to print
 
-- **eBay handle** is shown as `@expresscollectibles` to match the other
-  platforms, but no public eBay store was found under that name — correct it
-  (front line + `make_qr.py` NOTE) if the real handle differs.
-- **Phone** (618) 882-6660 comes from the public listing for 806 3rd St
-  (previously listed under Express Vapors at the same address).
-- **Email** neal_knebel@yahoo.com comes from the Express Collectibles Facebook
-  page. Swap in a neal@expresscollectibles.com address if one exists.
+- The bare domain `expresscollectibles.com` still shows the Squarespace
+  "coming soon" page — the card prints the working `WWW.` form. Point the
+  apex domain at the live site when possible.
+- `neal@expresscollectibles.com` must exist — set up the mailbox or an alias
+  forwarding to Neal's Gmail (Google Workspace admin for the domain).
 
 ## Files
 
@@ -48,12 +53,12 @@ rendered at 300 dpi.
 - `make_qr.py` — builds the vCard (`qr/neal-knebel.vcf`) and its QR
   (`qr/express-collectibles-vcard.svg` + path data). Edit the contact details
   here, then re-run.
-- `build_assets.py` — inlines fonts + fresh QR path into the artboards
-  (placeholders `@@FONT_*@@` / `@@QR_PATH@@`; already-built files are left
-  alone — to re-inject a new QR, restore the `@@QR_PATH@@` placeholder in
+- `build_assets.py` — inlines fonts + fresh QR path/viewBox into the artboards
+  (placeholders `@@FONT_*@@` / `@@QR_PATH@@` / `@@QR_VB@@`; already-built
+  files are left alone — to re-inject a new QR, restore the placeholders in
   `Back.dc.html` first)
-- `fonts/` — Press Start 2P + IBM Plex Mono 400/600, latin woff2 subsets
-  (Google Fonts, OFL license)
+- `fonts/` — Roboto (variable, normal + 900 italic) and Roboto Mono latin
+  woff2 subsets (Google Fonts, OFL license)
 - `qr/neal-knebel.vcf` — the vCard itself; also usable on its own (email
   signatures, AirDrop, website download link)
 
@@ -68,6 +73,5 @@ python3 -m img2pdf print/front-bleed-3.625x2.125in-300dpi.png \
   --imgsize 3.625inx2.125in -o print/express-collectibles-business-card-print.pdf
 ```
 
-Design system: deep navy `#16122b`, marquee amber `#ffb424`, CRT teal
-`#3ee0d2`, cream `#f2ead4`; Press Start 2P for display type, IBM Plex Mono for
-contact text; full-bleed amber/teal cabinet-trim bands; pixel bolt mark.
+The site also ships four alternate colorways (Tron Grid, Toxic CRT, Outrun
+Heat, Arcade Royale) — the card can be re-tokened to any of them on request.
