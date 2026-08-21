@@ -55,11 +55,17 @@ un-engraved keep-out panels so the grid never crosses the type; the QR area
 engraves as a solid silver plate with the modules left black steel (normal
 dark-on-light polarity — machine-verified to decode straight from the mask).
 
-- `engrave/front-engrave-mask.png` / `back-engrave-mask.png` — 1-bit, 600 dpi,
-  exactly 86 × 54 mm, **black = engrave**
-- In xTool Creative Space: import the PNG, set size to 86 × 54 mm, engrave
-  mode, use your coated-stainless preset. Engrave a test card and scan the QR
-  before running the batch.
+- `engrave/front-engrave-shaded.png` / `back-engrave-shaded.png` —
+  **recommended**: 8-bit grayscale, 600 dpi, exactly 86 × 54 mm, black =
+  engrave. Carries the depth layers (echo shadows under the big type, halos
+  behind the wordmark/QR plate, grid horizon fade) as mid-gray tones — run it
+  in xTool Creative Space's **grayscale/dither** mode so grays engrave as fine
+  dot patterns (dimmer silver).
+- `engrave/front-engrave-mask.png` / `back-engrave-mask.png` — flat 1-bit
+  line-art fallback (no shading) for plain black/white engrave mode.
+- In xTool Creative Space: import the PNG, set size to 86 × 54 mm, pick the
+  processing mode above, use your coated-stainless preset. Engrave a test
+  card and scan the QR before running the batch.
 - `SteelFront.dc.html` / `SteelBack.dc.html` are the on-screen previews
   (brushed-steel mockup); `make_masks.py` regenerates the masks from them
   after any contact edit (run `make_qr.py` + `build_assets.py` first).
