@@ -1,0 +1,16 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Front — 3.5×2 in + bleed", "x": 0, "y": 0, "w": 348, "h": 204, "print": "fixed" },
+    { "file": "Back.dc.html", "title": "Back — 3.5×2 in + bleed", "x": 448, "y": 0, "w": 348, "h": 204, "print": "fixed" }
+  ],
+  "annotations": [
+    {
+      "id": "print-specs",
+      "x": 0,
+      "y": 300,
+      "w": 460,
+      "text": "EXPRESS COLLECTIBLES — BUSINESS CARD\nArtboards are full-bleed 3.625×2.125 in at 96 px/in (348×204 px). Trim = 3.5×2 in (6 px off each edge); text sits inside the safe zone.\nThe QR is a vCard: scanning saves Neal's full contact card — name, shop, phone, address, email, website and every handle — so the info survives even if this was the last card on the counter.\nVERIFY BEFORE PRINT: eBay handle shown as @expresscollectibles (couldn't find the eBay store publicly — correct it if different) · phone (618) 882-6660 (public listing for 806 3rd St) · email neal_knebel@yahoo.com (from the Facebook page).\n300-dpi print files: express-collectibles/business-card/print/ in the Fenix5ive repo."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}
