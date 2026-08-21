@@ -1,0 +1,6 @@
+# generated previews + downloaded fonts (the shipped SVG embeds the fonts)
+fonts/
+poster.svg
+poster.html
+face.svg
+face.html
