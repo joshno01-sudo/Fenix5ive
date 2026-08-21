@@ -25,7 +25,7 @@ LINES = [
     "URL:https://www.expresscollectibles.com",
     "NOTE:Video Games / Consoles / Accessories / TCG / Collectibles "
     "- Buy / Sell / Trade. Whatnot + Facebook: @expresscollectibles. "
-    "eBay: expressplug. Instagram + TikTok: @nealknebelofficial.",
+    "eBay: neal_knebel. Instagram + TikTok: @nealknebelofficial.",
     "END:VCARD",
 ]
 VCARD = "\r\n".join(LINES) + "\r\n"

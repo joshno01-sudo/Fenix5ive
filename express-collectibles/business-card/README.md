@@ -31,8 +31,9 @@ OFL latin subsets).
 - **Neal Knebel — Owner** · Express Collectibles · Buy / Sell / Trade
 - (618) 882-1041 · neal@expresscollectibles.com · 906 Broadway, Highland, IL 62249
 - www.expresscollectibles.com
-- Whatnot / Facebook: **@expresscollectibles** · eBay store: **expressplug**
-  (ebay.com/str/expressplug, from the site footer) · Instagram / TikTok:
+- Whatnot / Facebook: **@expresscollectibles** · eBay: **neal_knebel** (the
+  seller username behind the "Highland Express Collectibles" store the site
+  footer links at ebay.com/str/expressplug) · Instagram / TikTok:
   **@nealknebelofficial**
 - Back QR: vCard 3.0 (v15, ECC L — machine-verified to decode from the
   300-dpi render with every field intact)
