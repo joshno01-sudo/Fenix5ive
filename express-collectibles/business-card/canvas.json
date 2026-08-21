@@ -1,15 +1,24 @@
 {
   "artboards": [
-    { "file": "Main.dc.html", "title": "Front — 3.5×2 in + bleed", "x": 0, "y": 0, "w": 348, "h": 204, "print": "fixed" },
-    { "file": "Back.dc.html", "title": "Back — 3.5×2 in + bleed", "x": 448, "y": 0, "w": 348, "h": 204, "print": "fixed" }
+    { "file": "Main.dc.html", "title": "Front — print, 3.5×2 in + bleed", "x": 0, "y": 0, "w": 348, "h": 204, "print": "fixed" },
+    { "file": "Back.dc.html", "title": "Back — print, 3.5×2 in + bleed", "x": 448, "y": 0, "w": 348, "h": 204, "print": "fixed" },
+    { "file": "SteelFront.dc.html", "title": "Steel Front — engraved preview, 86×54 mm", "x": 0, "y": 330, "w": 325, "h": 204, "print": "fixed" },
+    { "file": "SteelBack.dc.html", "title": "Steel Back — engraved preview, 86×54 mm", "x": 448, "y": 330, "w": 325, "h": 204, "print": "fixed" }
   ],
   "annotations": [
     {
       "id": "print-specs",
-      "x": 0,
-      "y": 300,
-      "w": 460,
-      "text": "EXPRESS COLLECTIBLES — BUSINESS CARD (Neon Arcade / Miami Sunset)\nStyled from www.expresscollectibles.com: exact site tokens — bg #150f2e, deep #0b071a, neon pink #ff3ea5, cyan #29e6ff, gold #ffc857, chrome-gradient italic wordmark, ticker bar, synthwave grid.\nArtboards are full-bleed 3.625×2.125 in at 96 px/in (348×204 px); trim = 3.5×2 in (6 px off each edge).\nThe QR is a vCard: scanning saves Neal's full contact card — name, shop, (618) 882-1041, 906 Broadway, neal@expresscollectibles.com, the site and every handle (Whatnot/FB @expresscollectibles, eBay neal_knebel, IG/TikTok @nealknebelofficial). The eBay store 'Highland Express Collectibles' lives at ebay.com/str/expressplug with seller username neal_knebel — the card shows the username.\nBEFORE PRINT: the bare domain expresscollectibles.com still shows the Squarespace 'coming soon' page — the card prints the working WWW form; point the apex at the live site when you can. Also make sure neal@expresscollectibles.com exists (forwarding to Neal's Gmail).\n300-dpi print files: express-collectibles/business-card/print/ in the Fenix5ive repo."
+      "x": 820,
+      "y": 0,
+      "w": 420,
+      "text": "PAPER VERSION (top row) — Neon Arcade / Miami Sunset, styled from www.expresscollectibles.com: bg #150f2e, neon pink #ff3ea5, cyan #29e6ff, gold #ffc857.\nFull-bleed 3.625×2.125 in at 96 px/in; trim = 3.5×2 in.\nQR = vCard: name, shop, (618) 882-1041, 906 Broadway, neal@expresscollectibles.com, site + all handles (Whatnot/FB @expresscollectibles, eBay neal_knebel, IG/TikTok @nealknebelofficial). eBay store 'Highland Express Collectibles' = ebay.com/str/expressplug, seller username neal_knebel — the card shows the username.\nBEFORE PRINT: bare expresscollectibles.com still shows the Squarespace parking page (card prints the WWW form); make sure neal@expresscollectibles.com exists.\nPrint files: express-collectibles/business-card/print/ in the repo."
+    },
+    {
+      "id": "engrave-specs",
+      "x": 820,
+      "y": 330,
+      "w": 420,
+      "text": "STEEL VERSION (bottom row) — same design translated for a black-steel blank engraved on the xTool, sized to the standard 86×54 mm metal card. Laser is binary, so glows/gradients became solid silver marks and line work; text rows sit on un-engraved keep-out panels so grid lines never cross the type. The QR area engraves as a solid silver plate with the modules left black steel — normal dark-on-light polarity, machine-verified to decode from the mask.\nEngrave-ready files: express-collectibles/business-card/engrave/*.png — 1-bit, 600 dpi, exactly 86×54 mm, BLACK = ENGRAVE. In xTool Creative Space: import, set size 86×54 mm, engrave mode, then your material's settings for coated stainless (e.g. F1/S1 presets). Do a test scan of the QR on the first card before running the batch."
     }
   ],
   "launch": { "view": "canvas" }

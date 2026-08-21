@@ -25,7 +25,7 @@ subs = {
     "@@QR_PATH@@": qr_path,
 }
 
-for name in ("Main.dc.html", "Back.dc.html"):
+for name in ("Main.dc.html", "Back.dc.html", "SteelFront.dc.html", "SteelBack.dc.html"):
     p = HERE / name
     text = p.read_text()
     hits = [k for k in subs if k in text]

@@ -46,6 +46,24 @@ OFL latin subsets).
 - `neal@expresscollectibles.com` must exist — set up the mailbox or an alias
   forwarding to Neal's Gmail (Google Workspace admin for the domain).
 
+## Black steel / xTool version (`engrave/`)
+
+Same design translated for laser engraving on a black-coated stainless blank
+(standard 86 × 54 mm metal business card). A laser is binary, so the neon
+glows/gradients become solid silver marks and line work; text rows sit on
+un-engraved keep-out panels so the grid never crosses the type; the QR area
+engraves as a solid silver plate with the modules left black steel (normal
+dark-on-light polarity — machine-verified to decode straight from the mask).
+
+- `engrave/front-engrave-mask.png` / `back-engrave-mask.png` — 1-bit, 600 dpi,
+  exactly 86 × 54 mm, **black = engrave**
+- In xTool Creative Space: import the PNG, set size to 86 × 54 mm, engrave
+  mode, use your coated-stainless preset. Engrave a test card and scan the QR
+  before running the batch.
+- `SteelFront.dc.html` / `SteelBack.dc.html` are the on-screen previews
+  (brushed-steel mockup); `make_masks.py` regenerates the masks from them
+  after any contact edit (run `make_qr.py` + `build_assets.py` first).
+
 ## Files
 
 - `Main.dc.html` / `Back.dc.html` — front/back artboard sources (self-contained:
