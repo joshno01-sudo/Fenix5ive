@@ -21,9 +21,9 @@ LINES = [
     "TITLE:Owner",
     "TEL;TYPE=WORK,VOICE:+16188826660",
     "ADR;TYPE=WORK:;;806 3rd St;Highland;IL;62249;USA",
-    "EMAIL;TYPE=INTERNET:Neal_knebel@yahoo.com",
-    "URL:https://www.expresscollectibles.com",
-    "NOTE:TCG / Sports Cards / Video Games - Buy Sell Trade. "
+    "EMAIL;TYPE=INTERNET:neal_knebel@yahoo.com",
+    "URL:https://expresscollectibles.com",
+    "NOTE:TCG / Sports Cards / Video Games - Buy / Sell / Trade. "
     "Whatnot + eBay + Facebook: @expresscollectibles. "
     "Instagram + TikTok: @nealknebelofficial.",
     "END:VCARD",
