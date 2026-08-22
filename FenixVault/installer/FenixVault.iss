@@ -9,7 +9,7 @@
 ; to someone with "double-click this, press Install".
 
 #define AppName        "Fenix Vault"
-#define AppVersion     "1.1.0"
+#define AppVersion     "1.2.0"
 #define AppPublisher   "Fenix 5ive"
 #define AppExeName     "FenixVault.exe"
 #define AppId          "{{6E4B1C4E-2C7A-4C4E-9E1B-FE5A17C0FA11}"

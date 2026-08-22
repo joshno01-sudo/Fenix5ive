@@ -41,6 +41,13 @@ carved back in because they hold data that cannot be reinstalled.
 **One stubborn file never stops the run.** A locked mailbox or an unreadable
 folder is recorded in `backup-report.txt` and the copy carries on.
 
+**It will not quietly download your cloud.** OneDrive and Dropbox show
+online-only files that look ordinary but hold no data locally — opening one
+downloads it. Copying a synced folder full of them would pull the entire cloud
+account over your connection. Those files are skipped by default and listed in
+`cloud-only-files.txt`, so nothing is missing without saying so. One tick
+includes them if that is what you want.
+
 ## What a backup looks like
 
 ```
@@ -51,6 +58,7 @@ FenixVault-Backup-2026-08-12_1432\
 ├── backup-info.json         where it came from, totals, settings used
 ├── manifest.jsonl           one line per file, with a SHA-256 fingerprint
 ├── backup-report.txt        only present if something could not be copied
+├── cloud-only-files.txt     only present if files were left in OneDrive/Dropbox
 ├── SystemSnapshot\
 │   ├── Screenshots\         one PNG per monitor, plus the whole desktop
 │   ├── WiFi\                one XML per saved network, passwords included

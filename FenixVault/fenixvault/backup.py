@@ -86,6 +86,9 @@ class BackupResult:
     snapshot_report: str | None = None
     snapshot_failed_sections: int = 0
     screenshots_taken: int = 0
+    placeholders_skipped: int = 0
+    placeholder_bytes: int = 0
+    cloud_list_path: str | None = None
     cancelled: bool = False
     duration_seconds: float = 0.0
 
@@ -103,6 +106,9 @@ class BackupResult:
             parts.append(f"PC settings recorded{shots}")
         if self.files_reused:
             parts.append(f"{self.files_reused:,} already up to date")
+        if self.placeholders_skipped:
+            parts.append(f"{self.placeholders_skipped:,} online-only files left "
+                         f"in the cloud ({human_bytes(self.placeholder_bytes)})")
         if self.files_failed:
             parts.append(f"{self.files_failed:,} could not be copied")
         if self.cancelled:
@@ -287,9 +293,20 @@ def run_backup(selection: FolderSelection,
 
     try:
         with ManifestWriter(backup_dir, info) as manifest:
+            cloud_files: list[str] = []
+
+            def note_placeholder(path: str, size: int) -> None:
+                result.placeholders_skipped += 1
+                result.placeholder_bytes += size
+                # Capped: the point is a usable list, not a second copy of the
+                # filesystem in memory.
+                if len(cloud_files) < 50_000:
+                    cloud_files.append(f"{human_bytes(size):>10}  {path}")
+
             for src, size, mtime, ext in iter_files(
                     selection, excludes, cancel,
-                    on_error=lambda message: result.errors.append(message)):
+                    on_error=lambda message: result.errors.append(message),
+                    on_placeholder=note_placeholder):
                 if cancel is not None and cancel.is_set():
                     result.cancelled = True
                     break
@@ -410,12 +427,49 @@ def run_backup(selection: FolderSelection,
         except OSError as exc:
             result.errors.append(f"Could not add the restore program: {exc}")
 
+    if result.placeholders_skipped:
+        result.cloud_list_path = _write_cloud_list(backup_dir, cloud_files,
+                                                   result)
+
     result.report_path = write_report(backup_dir, result.errors)
     result.duration_seconds = time.monotonic() - started
     state.phase = PHASE_FINISHING
     state.message = "Done."
     ping(force=True)
     return result
+
+
+def _write_cloud_list(backup_dir: str, entries: list[str],
+                      result: "BackupResult") -> str | None:
+    """Record which online-only files were left behind, and where they live.
+
+    A backup that silently omits a file is worse than one that refuses to run.
+    These were not copied because their contents are not on this disk --
+    reading them would have downloaded the whole cloud account -- so the list
+    goes into the backup where someone will actually find it.
+    """
+    path = os.path.join(backup_dir, "cloud-only-files.txt")
+    try:
+        with open(long_path(path), "w", encoding="utf-8", newline="\n") as handle:
+            handle.write("Files left in the cloud, not copied\n")
+            handle.write("=" * 70 + "\n\n")
+            handle.write(
+                f"{result.placeholders_skipped:,} files "
+                f"({human_bytes(result.placeholder_bytes)}) are stored online\n"
+                "by OneDrive, Dropbox or a similar service rather than on this\n"
+                "PC. They look like ordinary files in Explorer, but opening one\n"
+                "downloads it first, so copying them all would have pulled the\n"
+                "entire cloud account down over your internet connection.\n\n"
+                "They are safe: they still exist in that cloud account. Either\n"
+                "make sure that account survives, or in Explorer right-click the\n"
+                "folder and choose 'Always keep on this device', wait for it to\n"
+                "download, then run the backup again.\n\n")
+            if len(entries) >= 50_000:
+                handle.write("(only the first 50,000 are listed)\n\n")
+            handle.write("\n".join(entries) + "\n")
+        return path
+    except OSError:
+        return None
 
 
 def _bump(state: BackupProgress, count: int) -> None:

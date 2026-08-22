@@ -177,6 +177,10 @@ class ExcludeRules:
     skip_junk: bool = True
     skip_appdata_local: bool = True
     skip_hidden: bool = True
+    # Files whose contents live in OneDrive/Dropbox rather than on this disk.
+    # Copying one downloads it first, so a folder full of them turns a local
+    # backup into an unannounced re-download of the entire cloud account.
+    skip_cloud_placeholders: bool = True
     # Extra folder names the caller wants ignored, lowercase.
     extra_names: set[str] = field(default_factory=set)
 
