@@ -13,7 +13,7 @@ requires-python = ">=3.9"
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=7"]
+dev = ["pytest>=7", "pytest-timeout>=2", "pyflakes>=3"]
 
 [project.scripts]
 printer-monitor = "printer_monitor.cli:main"

@@ -251,6 +251,11 @@ pip install -e ".[dev]"
 python -m pytest
 ```
 
+CI runs the same suite on every change to `tools/printer-monitor/`
+(`.github/workflows/printer-monitor.yml`), on Linux with the oldest supported
+Python and on Windows — the platform the shop PC runs, and the one where the
+UDP sockets, threads and file permissions this uses actually differ.
+
 298 tests. The suite includes a small in-process SNMP agent (`tests/fake_agent.py`) serving
 canned MIBs (`tests/mibs.py`) shaped like the Latex 360, the LaserJet 4100, a Brother
 colour MFP, a Kyocera mono MFP and — to check the scanner's filtering — a network switch.

@@ -17,6 +17,7 @@ from printer_monitor.config import (
     PrinterConfig,
     SnmpSettings,
     Thresholds,
+    default_config,
 )
 from printer_monitor.models import Supply
 from printer_monitor.notify import Notifier
@@ -289,18 +290,23 @@ def test_such_a_supply_can_raise_an_alert(storage):
 @pytest.mark.skipif(os.name == "nt", reason="POSIX permissions only")
 def test_the_temp_file_is_never_world_readable(tmp_path, monkeypatch):
     """The SMTP password must not be exposed in the pre-rename temp file."""
+    from pathlib import Path
+
     seen_modes: list[int] = []
-    real_replace = os.replace
+    real_replace = Path.replace
 
     target = tmp_path / "config.json"
     tmp = target.with_suffix(".json.tmp")
 
-    def spy(src, dst):
+    def spy(self, dst):
         # Capture the temp file's mode at the moment it is swapped into place.
-        seen_modes.append(stat.S_IMODE(os.stat(src).st_mode))
-        return real_replace(src, dst)
+        # Patching Path.replace rather than os.replace: pathlib only calls
+        # os.replace directly from 3.11 on, so an os-level spy silently never
+        # fires on older versions and the test passes without checking anything.
+        seen_modes.append(stat.S_IMODE(os.stat(self).st_mode))
+        return real_replace(self, dst)
 
-    monkeypatch.setattr(os, "replace", spy)
+    monkeypatch.setattr(Path, "replace", spy)
     config = AppConfig(email=EmailSettings(password="super-secret"))
     config.save(target)
 
@@ -316,3 +322,55 @@ def test_saving_twice_overwrites_cleanly(tmp_path):
     config.poll_interval_seconds = 120
     config.save(target)
     assert AppConfig.load(target).poll_interval_seconds == 120
+
+
+# ---------------------------------------------------------------------------
+# Console encoding
+# ---------------------------------------------------------------------------
+
+
+def test_cli_output_survives_a_limited_console(tmp_path, monkeypatch):
+    """A classic Windows cp437 console cannot encode an em dash.
+
+    Supply names contain them, so without a tolerant stream `stock` died with a
+    UnicodeEncodeError instead of printing the list.
+    """
+    import io
+    import sys
+
+    from printer_monitor.cli import main
+
+    buffer = io.TextIOWrapper(io.BytesIO(), encoding="cp437", errors="strict")
+    monkeypatch.setattr(sys, "stdout", buffer)
+
+    config = tmp_path / "config.json"
+    default_config().save(config)
+    args = ["--config", str(config), "--db", str(tmp_path / "d.db"), "stock"]
+
+    assert main(args + ["--seed"]) == 0
+    assert main(args) == 0
+
+    buffer.flush()
+    printed = buffer.buffer.getvalue().decode("cp437")
+    assert "Printhead" in printed
+    assert "starter item" in printed
+
+
+def test_tolerating_the_console_does_not_break_utf8(tmp_path, monkeypatch):
+    """On a capable console the characters must still come through intact."""
+    import io
+    import sys
+
+    from printer_monitor.cli import main
+
+    buffer = io.TextIOWrapper(io.BytesIO(), encoding="utf-8", errors="strict")
+    monkeypatch.setattr(sys, "stdout", buffer)
+
+    config = tmp_path / "config.json"
+    default_config().save(config)
+    main(["--config", str(config), "--db", str(tmp_path / "d.db"), "stock", "--seed"])
+    main(["--config", str(config), "--db", str(tmp_path / "d.db"), "stock"])
+
+    buffer.flush()
+    printed = buffer.buffer.getvalue().decode("utf-8")
+    assert "Printhead — Cyan / Black" in printed

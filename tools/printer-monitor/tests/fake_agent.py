@@ -134,8 +134,9 @@ class FakeAgent:
                     results.append((nxt, self.mib[nxt], None))
 
         elif pdu_type == PDU_GET_BULK:
-            non_repeaters, max_repetitions = field2, field3
-            del non_repeaters
+            # In a GETBULK the error-status/error-index slots carry
+            # non-repeaters (field2, unused here) and max-repetitions.
+            max_repetitions = field3
             for oid in oids:
                 cursor = oid
                 for _ in range(max(1, max_repetitions)):

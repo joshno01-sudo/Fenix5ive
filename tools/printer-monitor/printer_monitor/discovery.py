@@ -182,8 +182,16 @@ def hosts_in(target: str) -> list[str]:
     if not target:
         raise ValueError("no network given")
 
+    # Each branch works out how many addresses it would produce and checks the
+    # limit *before* expanding. Building the list first would mean a mistyped
+    # /8 materialising 16 million strings — tens of seconds and hundreds of
+    # megabytes — just to be told it is too big.
     if "/" in target:
         network = ipaddress.ip_network(target, strict=False)
+        # .hosts() drops the network and broadcast addresses on a normal
+        # subnet, and yields the single address for a /32.
+        usable = network.num_addresses - 2 if network.num_addresses > 2 else 1
+        _check_size(usable)
         hosts = [str(ip) for ip in network.hosts()] or [str(network.network_address)]
     elif "-" in target:
         start_text, _, end_text = target.partition("-")
@@ -196,18 +204,22 @@ def hosts_in(target: str) -> list[str]:
         end = ipaddress.ip_address(end_text)
         if int(end) < int(start):
             raise ValueError("the end of the range is before the start")
+        _check_size(int(end) - int(start) + 1)
         hosts = [
             str(ipaddress.ip_address(value)) for value in range(int(start), int(end) + 1)
         ]
     else:
         hosts = [str(ipaddress.ip_address(target))]
 
-    if len(hosts) > MAX_HOSTS:
+    return hosts
+
+
+def _check_size(count: int) -> None:
+    if count > MAX_HOSTS:
         raise ValueError(
-            f"{len(hosts)} addresses is too many to scan at once (limit {MAX_HOSTS}). "
+            f"{count} addresses is too many to scan at once (limit {MAX_HOSTS}). "
             "Use a smaller range, such as a /24."
         )
-    return hosts
 
 
 def local_subnet_guess() -> Optional[str]:

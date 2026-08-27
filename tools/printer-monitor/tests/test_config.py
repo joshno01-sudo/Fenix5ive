@@ -299,7 +299,7 @@ def test_discover_command(capsys):
 
 
 def test_discover_unreachable_returns_1(capsys):
-    assert main(["discover", "127.0.0.1", "--port", "9"]) == 1
+    assert main(["discover", "127.0.0.1", "--port", "9", "--timeout", "0.2"]) == 1
     assert "No SNMP reply" in capsys.readouterr().out
 
 

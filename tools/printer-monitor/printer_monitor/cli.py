@@ -57,6 +57,9 @@ def build_parser() -> argparse.ArgumentParser:
     discover.add_argument("--community", default="public")
     discover.add_argument("--version", default=None, choices=["1", "2c"])
     discover.add_argument("--port", type=int, default=161)
+    discover.add_argument(
+        "--timeout", type=float, default=3.0, help="seconds to wait per request"
+    )
     discover.add_argument("--raw", action="store_true", help="also dump raw OIDs and values")
 
     stock = sub.add_parser("stock", help="view or adjust the on-hand supply list")
@@ -105,7 +108,24 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _tolerate_console_encoding() -> None:
+    """Stop a plain console from killing the command over one character.
+
+    Supply names carry the odd em dash or ellipsis. A Windows console still
+    running the classic cp437 code page cannot encode those, and Python's
+    default is to raise — so `printer-monitor stock` would die with a
+    UnicodeEncodeError rather than print the list. Substituting is the right
+    trade here: a "?" in a name beats no output at all.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")  # type: ignore[union-attr]
+        except (AttributeError, ValueError, OSError):
+            pass  # Python < 3.7, or a stream that is not a TextIOWrapper
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    _tolerate_console_encoding()
     parser = build_parser()
     args = parser.parse_args(argv)
 
@@ -221,7 +241,12 @@ def cmd_discover(args) -> int:
         id="discover",
         name=args.host,
         host=args.host,
-        snmp=SnmpSettings(community=args.community, version=version or "2c", port=args.port),
+        snmp=SnmpSettings(
+            community=args.community,
+            version=version or "2c",
+            port=args.port,
+            timeout=args.timeout,
+        ),
     )
     result = probe_printer(printer)
     print(result["message"])

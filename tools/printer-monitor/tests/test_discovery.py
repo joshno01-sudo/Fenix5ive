@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import pytest
 
 from printer_monitor import discovery
@@ -53,6 +55,23 @@ def test_oversized_scan_is_refused():
     """A /16 is 65k hosts — refuse rather than hammer the network."""
     with pytest.raises(ValueError, match="too many"):
         discovery.hosts_in("10.0.0.0/16")
+
+
+def test_oversized_scan_is_refused_without_expanding_it():
+    """The size check must come before the expansion.
+
+    A mistyped /8 is 16.7 million addresses: building the list first took ~28
+    seconds and hundreds of megabytes before refusing, which looks like a hang.
+    """
+    started = time.monotonic()
+    with pytest.raises(ValueError, match="too many"):
+        discovery.hosts_in("10.0.0.0/8")
+    assert time.monotonic() - started < 1.0
+
+    started = time.monotonic()
+    with pytest.raises(ValueError, match="too many"):
+        discovery.hosts_in("10.0.0.1-10.255.255.254")
+    assert time.monotonic() - started < 1.0
 
 
 @pytest.mark.parametrize("bad", ["", "   ", "not-an-ip", "192.168.1.0/99", "999.1.1.1"])

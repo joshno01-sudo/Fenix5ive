@@ -180,6 +180,34 @@ def test_timeout_when_nothing_listens():
     assert client.probe() is False
 
 
+def test_icmp_unreachable_is_treated_as_silence(monkeypatch):
+    """Windows raises WSAECONNRESET where Linux just times out.
+
+    Simulated here so the behaviour is pinned on every platform: it must read
+    as a timeout, so the retry loop still runs and an unreachable printer looks
+    the same on both operating systems.
+    """
+    import socket as socket_module
+
+    attempts = {"n": 0}
+    real_socket = socket_module.socket
+
+    class ResettingSocket(real_socket):  # type: ignore[misc,valid-type]
+        def recvfrom(self, *args, **kwargs):
+            attempts["n"] += 1
+            raise ConnectionResetError(10054, "port unreachable")
+
+    monkeypatch.setattr(socket_module, "socket", ResettingSocket)
+
+    client = SnmpClient("127.0.0.1", port=9, timeout=0.2, retries=2)
+    with pytest.raises(SnmpTimeout):
+        client.get("1.3.6.1.2.1.1.3.0")
+    assert attempts["n"] == 3, "the retry loop should still run"
+
+    # And the cheap reachability check reports False rather than raising.
+    assert client.probe() is False
+
+
 def test_retry_recovers_from_a_dropped_packet():
     with FakeAgent(LATEX_360, drop_first=1) as agent:
         client = client_for(agent, retries=2, timeout=0.5)
