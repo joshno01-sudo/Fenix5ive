@@ -1,10 +1,12 @@
 """Command line entry points.
 
-    printer-monitor              # open the window
-    printer-monitor check        # poll once, print levels, exit
-    printer-monitor monitor      # headless loop (for a service / Task Scheduler)
-    printer-monitor discover IP  # dump every supply OID a printer reports
-    printer-monitor stock        # show / adjust the supply list from a terminal
+    printer-monitor                    # open the window
+    printer-monitor scan                # find printers on the network
+    printer-monitor scan 10.0.0.0/24 --add
+    printer-monitor check               # poll once, print levels, exit
+    printer-monitor monitor             # headless loop (service / Task Scheduler)
+    printer-monitor discover IP         # dump every supply OID a printer reports
+    printer-monitor stock               # show / adjust the supply list
     printer-monitor test-email
 """
 
@@ -17,7 +19,7 @@ import sys
 from pathlib import Path
 from typing import Optional, Sequence
 
-from . import inventory
+from . import discovery, inventory
 from .config import AppConfig, PrinterConfig, SnmpSettings, default_config_path, default_db_path
 from .notify import Notifier
 from .poller import make_client, poll_printer, probe_printer
@@ -55,6 +57,9 @@ def build_parser() -> argparse.ArgumentParser:
     discover.add_argument("--community", default="public")
     discover.add_argument("--version", default=None, choices=["1", "2c"])
     discover.add_argument("--port", type=int, default=161)
+    discover.add_argument(
+        "--timeout", type=float, default=3.0, help="seconds to wait per request"
+    )
     discover.add_argument("--raw", action="store_true", help="also dump raw OIDs and values")
 
     stock = sub.add_parser("stock", help="view or adjust the on-hand supply list")
@@ -77,12 +82,50 @@ def build_parser() -> argparse.ArgumentParser:
     addp.add_argument("--version", default="2c", choices=["1", "2c"])
     addp.add_argument("--port", type=int, default=161)
 
+    scan = sub.add_parser(
+        "scan", help="find printers on the network (e.g. scan 192.168.1.0/24)"
+    )
+    scan.add_argument(
+        "network",
+        nargs="?",
+        help="subnet or range, e.g. 192.168.1.0/24 or 10.0.0.5-40. "
+        "Defaults to this computer's own /24.",
+    )
+    scan.add_argument(
+        "--community",
+        action="append",
+        dest="communities",
+        help="SNMP community to try (repeatable; default 'public')",
+    )
+    scan.add_argument("--port", type=int, default=161)
+    scan.add_argument("--timeout", type=float, default=1.0, help="seconds per host")
+    scan.add_argument(
+        "--add", action="store_true", help="add every printer found to the config"
+    )
+
     sub.add_parser("paths", help="print where the config and database live")
 
     return parser
 
 
+def _tolerate_console_encoding() -> None:
+    """Stop a plain console from killing the command over one character.
+
+    Supply names carry the odd em dash or ellipsis. A Windows console still
+    running the classic cp437 code page cannot encode those, and Python's
+    default is to raise — so `printer-monitor stock` would die with a
+    UnicodeEncodeError rather than print the list. Substituting is the right
+    trade here: a "?" in a name beats no output at all.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")  # type: ignore[union-attr]
+        except (AttributeError, ValueError, OSError):
+            pass  # Python < 3.7, or a stream that is not a TextIOWrapper
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    _tolerate_console_encoding()
     parser = build_parser()
     args = parser.parse_args(argv)
 
@@ -125,6 +168,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return cmd_test_email(config)
         if command == "add-printer":
             return cmd_add_printer(config, storage, args)
+        if command == "scan":
+            return cmd_scan(config, storage, args)
 
     parser.print_help()
     return 1
@@ -196,7 +241,12 @@ def cmd_discover(args) -> int:
         id="discover",
         name=args.host,
         host=args.host,
-        snmp=SnmpSettings(community=args.community, version=version or "2c", port=args.port),
+        snmp=SnmpSettings(
+            community=args.community,
+            version=version or "2c",
+            port=args.port,
+            timeout=args.timeout,
+        ),
     )
     result = probe_printer(printer)
     print(result["message"])
@@ -277,6 +327,108 @@ def cmd_stock(config: AppConfig, storage: Storage, args) -> int:
     return 0
 
 
+def cmd_scan(config: AppConfig, storage: Storage, args) -> int:
+    """Sweep the network for printers, optionally adding them all."""
+    target = args.network or discovery.local_subnet_guess()
+    if not target:
+        print(
+            "Could not work out this computer's network. Give one explicitly, e.g.\n"
+            "  printer-monitor scan 192.168.1.0/24",
+            file=sys.stderr,
+        )
+        return 2
+
+    communities = args.communities or ["public"]
+    try:
+        hosts = discovery.hosts_in(target)
+    except ValueError as exc:
+        print(f"Cannot scan {target}: {exc}", file=sys.stderr)
+        return 2
+
+    print(f"Scanning {target} ({len(hosts)} addresses)…")
+
+    def progress(done: int, total: int, found) -> None:
+        if found is not None:
+            print(f"  found  {found.summary}")
+        elif done % 32 == 0 or done == total:
+            print(f"  …{done}/{total} checked", end="\r", flush=True)
+
+    printers = discovery.scan(
+        target,
+        communities=communities,
+        port=args.port,
+        timeout=args.timeout,
+        on_progress=progress,
+    )
+    print(" " * 40, end="\r")  # clear the progress line
+
+    if not printers:
+        print(
+            f"\nNo printers answered on {target}.\n"
+            "Check that SNMP is enabled on them, and that the community string is "
+            f"one of: {', '.join(communities)}"
+        )
+        return 1
+
+    print(f"\nFound {len(printers)} printer(s):\n")
+    for printer in printers:
+        print(f"  {printer.host}")
+        print(f"    {printer.display_name}")
+        if printer.serial:
+            print(f"    S/N {printer.serial}")
+        print(f"    SNMPv{printer.version}, community '{printer.community}'")
+        if printer.supply_count:
+            names = ", ".join(printer.supply_names[:6])
+            more = "…" if len(printer.supply_names) > 6 else ""
+            print(f"    {printer.supply_count} supplies: {names}{more}")
+        else:
+            print("    no supply data reported")
+        print()
+
+    fresh = list(discovery.new_printers(printers, config.printers))
+    already = len(printers) - len(fresh)
+    if already:
+        print(f"{already} of these are already being monitored.")
+
+    if not args.add:
+        if fresh:
+            print("Re-run with --add to start monitoring the new ones.")
+        return 0
+
+    if not fresh:
+        print("Nothing new to add.")
+        return 0
+
+    for found in fresh:
+        printer = found.to_config(existing_ids=[p.id for p in config.printers])
+        config.printers.append(printer)
+        print(f"Added {printer.name} ({printer.host}) as '{printer.id}'.")
+        _seed_supply_list(storage, printer)
+
+    path = config.save()
+    print(f"\nSaved {len(fresh)} printer(s) to {path}")
+    return 0
+
+
+def _seed_supply_list(storage: Storage, printer: PrinterConfig, reading=None) -> None:
+    """Fill the shelf list from what the printer actually reports.
+
+    Falls back to the profile's starter list when it can't be reached — the
+    real descriptions are always better than a guessed list. Pass ``reading``
+    to reuse a poll the caller has already done.
+    """
+    if reading is None:
+        reading = poll_printer(printer)
+    if reading.online and reading.supplies:
+        created = inventory.seed_from_reading(storage, reading)
+        if created:
+            print(f"  Added {len(created)} supply-list item(s) from the printer.")
+        return
+    added = inventory.seed_defaults(storage, printer.id, printer.profile)
+    if added:
+        print(f"  Added {added} starter supply-list item(s).")
+
+
 def cmd_test_email(config: AppConfig) -> int:
     if not config.email.is_configured():
         print(
@@ -324,9 +476,8 @@ def cmd_add_printer(config: AppConfig, storage: Storage, args) -> int:
     path = config.save()
     print(f"Saved {printer.name} ({printer.host}) to {path}")
 
-    added = inventory.seed_defaults(storage, printer.id, printer.profile)
-    if added:
-        print(f"Added {added} starter supply-list item(s).")
+    # probe_printer already did a full poll — reuse it rather than asking twice.
+    _seed_supply_list(storage, printer, reading=result.get("reading"))
     return 0 if result["ok"] else 1
 
 

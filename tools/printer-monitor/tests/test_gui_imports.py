@@ -192,8 +192,10 @@ def test_gui_is_not_imported_by_the_headless_path():
         if name.startswith("printer_monitor"):
             del sys.modules[name]
 
-    import printer_monitor  # noqa: F401
-    from printer_monitor import cli, notify, service  # noqa: F401
+    import printer_monitor
+    from printer_monitor import cli, notify, service
 
+    # Referenced so the imports are plainly deliberate rather than dead.
+    assert all(module is not None for module in (printer_monitor, cli, notify, service))
     assert not any(name.startswith("printer_monitor.gui") for name in sys.modules)
     assert "tkinter" not in sys.modules

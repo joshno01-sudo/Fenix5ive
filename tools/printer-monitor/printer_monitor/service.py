@@ -5,10 +5,11 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, Optional, Sequence
 
 from .alerts import AlertEngine
-from .config import AppConfig
+from .config import AppConfig, PrinterConfig
 from .inventory import seed_from_reading
 from .models import AlertEvent, PrinterReading
 from .notify import Notifier
@@ -16,6 +17,10 @@ from .poller import poll_printer
 from .storage import Storage
 
 log = logging.getLogger(__name__)
+
+# Enough to keep a whole office fleet inside one poll cycle without opening a
+# socket per printer all at once.
+MAX_POLL_WORKERS = 12
 
 ReadingCallback = Callable[[list[PrinterReading]], None]
 AlertCallback = Callable[[list[AlertEvent]], None]
@@ -113,21 +118,24 @@ class MonitorService:
 
     def poll_once(self) -> list[PrinterReading]:
         printers = self.config.enabled_printers()
-        readings: list[PrinterReading] = []
         events: list[AlertEvent] = []
 
-        for printer in printers:
-            reading = poll_printer(printer)
-            readings.append(reading)
+        # Poll the fleet concurrently: one unreachable printer costs
+        # timeout x retries, and with a dozen of them a sequential cycle could
+        # outlast the poll interval. Results are still processed in config
+        # order, so alerts and history stay deterministic.
+        readings = self._poll_all(printers)
+
+        for reading in readings:
             try:
                 self.storage.record_reading(reading)
             except Exception:  # noqa: BLE001
-                log.exception("failed to record history for %s", printer.id)
+                log.exception("failed to record history for %s", reading.printer_id)
             if reading.online and self.auto_seed_inventory:
                 try:
                     seed_from_reading(self.storage, reading)
                 except Exception:  # noqa: BLE001
-                    log.exception("failed to seed supply list for %s", printer.id)
+                    log.exception("failed to seed supply list for %s", reading.printer_id)
             events.extend(self.engine.evaluate_reading(reading))
 
         try:
@@ -147,6 +155,39 @@ class MonitorService:
         self._handle_events(events)
         self._maybe_prune()
         return readings
+
+    def _poll_all(self, printers: Sequence[PrinterConfig]) -> list[PrinterReading]:
+        """Poll every printer, concurrently, returning results in config order."""
+        if not printers:
+            return []
+        if len(printers) == 1:
+            return [poll_printer(printers[0])]
+
+        workers = min(MAX_POLL_WORKERS, len(printers))
+        # Keyed by position, not by id: nothing guarantees ids are unique (two
+        # entries with the same name slugify to the same id), and keying by id
+        # would silently drop one of them from the whole cycle.
+        results: list[Optional[PrinterReading]] = [None] * len(printers)
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="poll") as pool:
+            futures = {
+                pool.submit(poll_printer, printer): index
+                for index, printer in enumerate(printers)
+            }
+            for future in as_completed(futures):
+                index = futures[future]
+                printer = printers[index]
+                try:
+                    results[index] = future.result()
+                except Exception as exc:  # noqa: BLE001 - poll_printer shouldn't raise
+                    log.exception("poll of %s raised", printer.id)
+                    results[index] = PrinterReading(
+                        printer_id=printer.id,
+                        printer_name=printer.name,
+                        host=printer.host,
+                        online=False,
+                        error=f"{type(exc).__name__}: {exc}",
+                    )
+        return [reading for reading in results if reading is not None]
 
     def _handle_events(self, events: list[AlertEvent]) -> None:
         fresh = self.engine.filter_new(events)

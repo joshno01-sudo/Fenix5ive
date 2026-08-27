@@ -1,0 +1,89 @@
+name: Printer Monitor
+
+# Runs the printer monitor's tests on every change to it. Windows is in the
+# matrix because that is what the shop PC runs, and the suite touches
+# platform-sensitive things — UDP sockets, threads, file permissions.
+
+on:
+  push:
+    paths:
+      - 'tools/printer-monitor/**'
+      - '.github/workflows/printer-monitor.yml'
+  pull_request:
+    paths:
+      - 'tools/printer-monitor/**'
+      - '.github/workflows/printer-monitor.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push makes the previous run's answer irrelevant, and a hung job should
+# not sit on a runner for hours.
+concurrency:
+  group: printer-monitor-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: tools/printer-monitor
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The oldest version pyproject.toml claims to support...
+          - os: ubuntu-latest
+            python: '3.9'
+          - os: ubuntu-latest
+            python: '3.12'
+          # ...and the platform it actually runs on in the shop.
+          - os: windows-latest
+            python: '3.12'
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install pytest
+        # The monitor itself has no dependencies on purpose; only the test
+        # runner needs installing. pytest-timeout is the hang guard below.
+        run: python -m pip install --quiet --upgrade pip pytest pytest-timeout
+
+      - name: Run the tests
+        # The suite binds real UDP sockets on localhost and runs background
+        # threads, so a deadlock would otherwise sit until the job timeout.
+        run: python -m pytest -q --timeout=300 --durations=10
+        env:
+          PYTHONUNBUFFERED: '1'
+
+      - name: Check for unused names and typos
+        run: |
+          python -m pip install --quiet pyflakes
+          python -m pyflakes printer_monitor tests
+
+      - name: Smoke-test the command line
+        timeout-minutes: 4
+        # Proves the CLI actually starts on a machine with no config, no
+        # database and no printers — the state a new install is in. Uses a
+        # scratch config/database so nothing lands in the runner's home.
+        env:
+          PRINTER_MONITOR_HOME: ci-scratch
+        run: |
+          python -m printer_monitor --help
+          python -m printer_monitor paths
+          python -m printer_monitor stock --seed
+          python -m printer_monitor stock
+
+      - name: Check the headless path needs no display
+        # The shop PC has a screen, but `monitor` is meant to run as a service
+        # and `check` from Task Scheduler; neither may pull in tkinter.
+        run: |
+          python -c "import printer_monitor, sys; from printer_monitor import cli, service, notify; assert 'tkinter' not in sys.modules, 'tkinter got imported by the headless path'; print('headless imports are clean')"

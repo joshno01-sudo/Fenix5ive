@@ -451,6 +451,16 @@ class SnmpClient:
                     raise SnmpTimeout(
                         f"{self.host}:{self.port} did not respond within {self.timeout}s"
                     ) from exc
+                except (ConnectionResetError, ConnectionRefusedError) as exc:
+                    # Windows reports ICMP "port unreachable" as WSAECONNRESET
+                    # on the next receive, even from an unconnected UDP socket;
+                    # Linux stays silent and lets the read time out. Either way
+                    # nothing answered, so treat it as silence — otherwise the
+                    # retry loop (which only retries timeouts) is skipped and
+                    # the same condition reports differently per platform.
+                    raise SnmpTimeout(
+                        f"{self.host}:{self.port} is not accepting SNMP ({exc})"
+                    ) from exc
                 except OSError as exc:
                     raise SnmpError(f"network error talking to {self.host}: {exc}") from exc
                 (

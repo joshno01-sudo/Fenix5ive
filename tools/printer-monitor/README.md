@@ -1,30 +1,46 @@
 # Printer Supply Monitor
 
-Watches supply levels on the shop's **HP Latex 360** and **HP LaserJet 4100**, keeps a
-running count of the spares on the shelf, and pops up a window plus sends an email when
-anything drops below a level you set.
+Watches supply levels on every printer in the shop — the **HP Latex 360**, the **HP
+LaserJet 4100**, and any other network printer in the office — keeps a running count of
+the spares on the shelf, and pops up a window plus sends an email when anything drops
+below a level you set.
 
 No third-party packages — plain Python 3.9+ and the standard library, so it installs on a
 locked-down shop PC without a pip mirror or admin rights.
 
+## Which printers work
+
+Any printer that speaks SNMP and implements the standard Printer MIB (RFC 3805), which in
+practice means essentially every networked office printer of the last twenty years —
+Brother, Canon, Epson, Kyocera, Lexmark, Ricoh, Sharp, Xerox, Konica Minolta, OKI, as well
+as HP. Nothing is hardcoded per model: the supply tables are *walked*, so whatever a given
+printer reports is what gets monitored. A colour laser's four toners, drum, belt and waste
+box come through the same code path as the Latex's inks.
+
+The quickest way to add them all is to let it find them (see **Finding your printers**
+below). The printer "type" setting only picks the starter shelf list — level reading is
+identical for every type.
+
 ## What it watches
 
-Everything the printer reports over SNMP (the standard Printer MIB, RFC 3805). Nothing is
-hardcoded per model — whatever the printer exposes is what gets monitored:
+Everything the printer reports over SNMP. Nothing is hardcoded per model — whatever the
+printer exposes is what gets monitored:
 
-| | Latex 360 | LaserJet 4100 |
-|---|---|---|
-| Ink / toner | 6 colours + optimizer, in ml and % | black toner, in % |
-| Printheads | life remaining per printhead | — |
-| Maintenance | maintenance cartridge (counts *up* as it fills) | maintenance kit / fuser, in impressions |
-| Media | substrate roll + loaded media name | all trays, sheets and % |
-| Status | idle / printing / warming up, front-panel message | same, plus low-toner and jam flags |
-| Counters | lifetime page count | lifetime page count |
-| Errors | the printer's own alert table (jams, doors, service due) | same |
+| | Latex 360 | LaserJet 4100 | Colour laser / MFP |
+|---|---|---|---|
+| Ink / toner | 6 colours + optimizer, in ml and % | black toner, in % | CMYK toner, in % |
+| Printheads | life remaining per printhead | — | — |
+| Wear parts | — | maintenance kit / fuser, in impressions | drum, transfer belt, fuser |
+| Waste | maintenance cartridge (counts *up* as it fills) | — | waste toner box |
+| Media | substrate roll + loaded media name | all trays, sheets and % | all trays / cassettes |
+| Status | idle / printing / warming up, front-panel message | same, plus low-toner and jam flags | same |
+| Counters | lifetime page count | lifetime page count | lifetime page count |
+| Errors | the printer's own alert table (jams, doors, service due) | same | same |
 
-Waste receptacles are handled correctly: the Latex's maintenance cartridge reports how
-**full** it is, so the app inverts it and always shows *life remaining*. A threshold of
-15% means the same thing for every supply on both machines.
+Waste receptacles are handled correctly: the Latex's maintenance cartridge and a colour
+laser's waste toner box both report how **full** they are, so the app inverts them and
+always shows *life remaining*. A threshold of 15% means the same thing for every supply on
+every machine.
 
 ## Setup
 
@@ -50,17 +66,46 @@ Or skip installing and run it in place with `python -m printer_monitor`.
 ### 3. Point it at the printers
 
 Open the window (`python -m printer_monitor`, or double-click `run-monitor.bat` on
-Windows), go to **Settings → Printers**, enter each IP, and press **Test connection**.
-That confirms it can talk to the printer, reports how many supplies it found, and fixes
-the SNMP version automatically if it was wrong. Press **Save settings**.
+Windows), go to **Settings → Printers**, and press **Find printers on the network**. See
+below.
 
-From a terminal instead:
+## Finding your printers
+
+Rather than hunting for IP addresses, let it look:
+
+**In the window** — Settings → Printers → **Find printers on the network**. It pre-fills
+this computer's own subnet, sweeps it, and lists everything that answers as a printer with
+its model, serial and supply names. Tick the ones you want and press **Add selected**.
+Printers already being monitored are shown greyed out so you can't add them twice.
+
+**From a terminal**:
 
 ```bash
-printer-monitor add-printer "HP Latex 360"   192.168.1.50 --profile hp_latex
-printer-monitor add-printer "HP LaserJet 4100" 192.168.1.51 --profile hp_laserjet
+printer-monitor scan                        # this computer's own /24
+printer-monitor scan 192.168.1.0/24         # a specific subnet
+printer-monitor scan 10.0.0.20-60           # a range
+printer-monitor scan 192.168.1.0/24 --add   # ...and start monitoring them all
+```
+
+The sweep sends one read-only SNMP request per address, so a /24 takes a few seconds.
+Devices that answer SNMP but aren't printers (switches, servers, UPSes) are filtered out.
+If your printers use a community string other than `public`, pass `--community` (repeat it
+to try several).
+
+When a printer is added this way, its shelf list is filled in from the supply names the
+printer itself reports — so a Brother gets "Cyan Toner Cartridge", "Waste Toner Box" and
+so on, with no guessing.
+
+To add one by hand instead:
+
+```bash
+printer-monitor add-printer "Front office MFP" 192.168.1.60
 printer-monitor check          # poll once and print every level
 ```
+
+Or in Settings → Printers, press **Add**, type the IP, and press **Test connection** —
+that confirms it can talk to the printer, reports how many supplies it found, and fixes
+the SNMP version automatically if it was wrong. Press **Save settings**.
 
 ## The four tabs
 
@@ -143,6 +188,8 @@ WantedBy=multi-user.target
 
 ```bash
 printer-monitor                  # open the window
+printer-monitor scan             # find printers on this computer's network
+printer-monitor scan 192.168.1.0/24 --add    # ...and monitor everything found
 printer-monitor check            # poll once, print all levels, exit
 printer-monitor check --notify   # ...and fire alerts for anything low
 printer-monitor monitor          # headless polling loop
@@ -172,8 +219,17 @@ variables.
 ## Troubleshooting
 
 **"No SNMP reply"** — check the IP, that SNMP is enabled on the printer, and the community
-string. Both printers must be reachable from this PC; try `ping` first. Some firewalls
-block outbound UDP 161.
+string. The printer must be reachable from this PC; try `ping` first. Some firewalls block
+outbound UDP 161.
+
+**A printer didn't turn up in the scan** — it may be on a different subnet from this
+computer (scan that range explicitly), have SNMP switched off, or use a community string
+other than `public` (`--community`). Some printers also sleep deeply enough to miss the
+single scan packet; wake it and scan again, or add it by hand with its IP.
+
+**A scanned printer shows no supply data** — it answered SNMP but doesn't publish the
+Printer MIB supply table. Very cheap or very old models sometimes don't. It will still be
+monitored for reachability, but levels have to come from its own web page.
 
 **Supplies show "Unknown" or "Some remaining"** — that's the printer, not the app. HP
 firmware reports `-3` ("some remaining") for a cartridge it can't measure precisely,
@@ -195,8 +251,14 @@ pip install -e ".[dev]"
 python -m pytest
 ```
 
-206 tests. The suite includes a small in-process SNMP agent
-(`tests/fake_agent.py`) serving canned MIBs shaped like both real printers
-(`tests/mibs.py`), so polling, v1-vs-v2c fallback, retries, level maths, alerting and the
-CLI are all exercised over a real UDP socket rather than mocks. The GUI modules are
-imported against a stub tkinter, so they're checked even on machines without it.
+CI runs the same suite on every change to `tools/printer-monitor/`
+(`.github/workflows/printer-monitor.yml`), on Linux with the oldest supported
+Python and on Windows — the platform the shop PC runs, and the one where the
+UDP sockets, threads and file permissions this uses actually differ.
+
+298 tests. The suite includes a small in-process SNMP agent (`tests/fake_agent.py`) serving
+canned MIBs (`tests/mibs.py`) shaped like the Latex 360, the LaserJet 4100, a Brother
+colour MFP, a Kyocera mono MFP and — to check the scanner's filtering — a network switch.
+Polling, v1-vs-v2c fallback, retries, level maths, alerting, network discovery and the CLI
+are all exercised over real UDP sockets rather than mocks. The GUI modules are imported
+against a stub tkinter, so they're checked even on machines without it.
