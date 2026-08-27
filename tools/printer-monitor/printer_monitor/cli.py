@@ -24,13 +24,22 @@ from .config import AppConfig, PrinterConfig, SnmpSettings, default_config_path,
 from .notify import Notifier
 from .poller import make_client, poll_printer, probe_printer
 from .service import MonitorService, run_forever, summarize_readings
+from .single_instance import AlreadyRunning, SingleInstance
 from .storage import Storage
+from .version import APP_NAME, VERSION
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="printer-monitor",
-        description="Monitor HP printer supply levels, track spares, alert when low.",
+        description=f"{APP_NAME} {VERSION} — read printer supply levels over SNMP, "
+        "track spare stock, and alert when levels get low.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"{APP_NAME} {VERSION}",
+        help="print the version and exit",
     )
     parser.add_argument("--config", type=Path, help="path to config.json")
     parser.add_argument("--db", type=Path, help="path to the monitor database")
@@ -38,7 +47,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub = parser.add_subparsers(dest="command")
 
-    sub.add_parser("gui", help="open the monitor window (default)")
+    gui = sub.add_parser("gui", help="open the monitor window (default)")
+    gui.add_argument(
+        "--minimized",
+        "--minimised",
+        action="store_true",
+        dest="minimized",
+        help="start monitoring with the window minimised (used by the startup shortcut)",
+    )
 
     check = sub.add_parser("check", help="poll every printer once and print the levels")
     check.add_argument(
@@ -155,7 +171,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(f"Cannot start the window: {exc}", file=sys.stderr)
             print("Install tkinter, or use 'printer-monitor check' instead.", file=sys.stderr)
             return 2
-        return run_gui(config, db_path=db_path)
+        return run_gui(
+            config, db_path=db_path, minimized=getattr(args, "minimized", False)
+        )
 
     with Storage(db_path) as storage:
         if command == "check":
@@ -226,11 +244,28 @@ def cmd_monitor(config: AppConfig, storage: Storage) -> int:
     if not config.enabled_printers():
         print("No printers configured.", file=sys.stderr)
         return 2
-    print(
-        f"Monitoring {len(config.enabled_printers())} printer(s) every "
-        f"{config.poll_interval_seconds}s. Ctrl+C to stop."
-    )
-    run_forever(config, storage)
+
+    # The same lock the window takes. Without it, a scheduled `monitor` run
+    # alongside an open window would poll and alert twice over — two emails
+    # about the same cartridge, which is exactly what the lock is for.
+    try:
+        lock = SingleInstance().acquire()
+    except AlreadyRunning:
+        print(
+            "The monitor is already running (the window, or another scheduled "
+            "run).\nClose it first, or let that copy do the monitoring.",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        print(
+            f"Monitoring {len(config.enabled_printers())} printer(s) every "
+            f"{config.poll_interval_seconds}s. Ctrl+C to stop."
+        )
+        run_forever(config, storage)
+    finally:
+        lock.release()
     return 0
 
 

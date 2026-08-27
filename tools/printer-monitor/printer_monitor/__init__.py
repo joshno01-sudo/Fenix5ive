@@ -8,10 +8,15 @@ Stdlib only: no third-party packages to install.
 
 from __future__ import annotations
 
-__version__ = "1.0.0"
+from .version import APP_NAME, APP_SLUG, VERSION
+
+__version__ = VERSION
 
 __all__ = [
     "__version__",
+    "APP_NAME",
+    "APP_SLUG",
+    "VERSION",
     "AppConfig",
     "MonitorService",
     "Storage",
