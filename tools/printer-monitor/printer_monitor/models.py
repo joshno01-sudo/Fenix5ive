@@ -8,6 +8,11 @@ from typing import Optional
 
 from . import printer_mib as mib
 
+# Units where a bare 0-100 level with no stated capacity should be read as a
+# percentage: percent itself, plus other(1)/unknown(2), which is what several
+# office-printer vendors report instead.
+_PERCENTISH_UNITS = {1, 2, mib.UNIT_PERCENT}
+
 
 @dataclass
 class Supply:
@@ -44,14 +49,16 @@ class Supply:
     def effective_capacity(self) -> Optional[int]:
         """Max capacity, filling in the obvious value for percent-based supplies.
 
-        Some HP firmware reports the unit as percent but leaves max capacity at
-        -2 (unknown). The level is then already a percentage, so 100 is the
-        capacity — without this those supplies would report no level at all and
-        never alert.
+        Plenty of firmware reports a level of 0-100 but leaves max capacity at
+        -2 (unknown) — HP does it with the unit set to percent, and several
+        office-printer vendors do it with the unit left as other/unknown. In
+        both cases the level already is a percentage, so 100 is the capacity.
+        Without this those supplies would report no level at all and never
+        alert, which is the worse failure of the two.
         """
         if self.max_capacity_raw > 0:
             return self.max_capacity_raw
-        if self.unit_code == mib.UNIT_PERCENT and 0 <= self.level_raw <= 100:
+        if self.unit_code in _PERCENTISH_UNITS and 0 <= self.level_raw <= 100:
             return 100
         return None
 

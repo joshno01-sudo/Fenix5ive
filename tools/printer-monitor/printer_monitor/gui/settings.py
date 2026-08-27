@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
 from typing import Optional
 
+from .. import discovery
 from ..config import ENV_SMTP_PASSWORD, PrinterConfig, SnmpSettings, slugify
 from ..notify import Notifier
 from ..poller import probe_printer
@@ -81,6 +82,9 @@ class PrintersPage(ttk.Frame):
         ttk.Button(buttons, text="Add", width=7, command=self.add_printer).pack(side="left")
         ttk.Button(buttons, text="Remove", width=8, command=self.remove_printer).pack(
             side="left", padx=4
+        )
+        ttk.Button(left, text="Find printers on the network…", command=self.find_printers).pack(
+            fill="x", pady=(6, 0)
         )
 
         right = ttk.Frame(self, padding=(16, 0, 0, 0))
@@ -240,6 +244,25 @@ class PrintersPage(ttk.Frame):
         self.listbox.selection_set("end")
         self._on_select()
 
+    def find_printers(self) -> None:
+        """Sweep the network and offer whatever answers as a printer."""
+        dialog = ScanDialog(self, self.app)
+        if not dialog.result:
+            return
+        added = 0
+        for found in dialog.result:
+            printer = found.to_config(existing_ids=[p.id for p in self.app.config.printers])
+            self.app.config.printers.append(printer)
+            added += 1
+        self._current = None
+        self.refresh()
+        messagebox.showinfo(
+            "Printers added",
+            f"Added {added} printer(s).\n\nPress “Save settings” to keep them, then the "
+            "supply list fills in from each printer on the next poll.",
+            parent=self,
+        )
+
     def remove_printer(self) -> None:
         selection = self.listbox.curselection()
         if not selection:
@@ -288,6 +311,214 @@ class PrintersPage(ttk.Frame):
         reading = result.get("reading")
         if ok and reading is not None:
             self.app.apply_readings([reading])
+
+
+class ScanDialog(tk.Toplevel):
+    """Sweeps the network and lets the user tick which printers to add."""
+
+    def __init__(self, parent: tk.Misc, app):
+        super().__init__(parent)
+        self.app = app
+        self.result: list = []
+        self._found: list = []
+        self._checks: list[tuple[tk.BooleanVar, object]] = []
+        self._stop = threading.Event()
+        self._scanning = False
+        self._scan_error = ""
+
+        self.title("Find printers on the network")
+        self.transient(parent)
+        self.resizable(False, False)
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+        top = ttk.Frame(self, padding=12)
+        top.pack(fill="x")
+        ttk.Label(top, text="Network to scan").grid(row=0, column=0, sticky="w", padx=(0, 8))
+        self.network_var = tk.StringVar(value=discovery.local_subnet_guess() or "192.168.1.0/24")
+        ttk.Entry(top, textvariable=self.network_var, width=24).grid(row=0, column=1, sticky="w")
+
+        ttk.Label(top, text="Community").grid(row=0, column=2, sticky="w", padx=(14, 8))
+        self.community_var = tk.StringVar(value="public")
+        ttk.Entry(top, textvariable=self.community_var, width=14).grid(row=0, column=3, sticky="w")
+
+        self.scan_button = ttk.Button(top, text="Scan", command=self.start_scan)
+        self.scan_button.grid(row=0, column=4, padx=(14, 0))
+
+        ttk.Label(
+            top,
+            text=(
+                "Sends one read-only SNMP request to each address, so a scan of a /24\n"
+                "takes a few seconds. Printers already being monitored are skipped."
+            ),
+            foreground="#666",
+            font=("Segoe UI", 8),
+            justify="left",
+        ).grid(row=1, column=0, columnspan=5, sticky="w", pady=(8, 0))
+
+        self.progress = ttk.Progressbar(self, mode="determinate", length=560)
+        self.progress.pack(fill="x", padx=12)
+        self.status = ttk.Label(self, text="", foreground="#555", padding=(12, 4))
+        self.status.pack(fill="x")
+
+        body = ttk.Frame(self, padding=(12, 0))
+        body.pack(fill="both", expand=True)
+        self.canvas = tk.Canvas(body, width=560, height=260, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(body, orient="vertical", command=self.canvas.yview)
+        self.results = ttk.Frame(self.canvas)
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+        self.canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        self._window = self.canvas.create_window((0, 0), window=self.results, anchor="nw")
+        self.results.bind(
+            "<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+
+        footer = ttk.Frame(self, padding=12)
+        footer.pack(fill="x")
+        self.add_button = ttk.Button(
+            footer, text="Add selected", command=self._on_add, state="disabled"
+        )
+        self.add_button.pack(side="right")
+        ttk.Button(footer, text="Cancel", command=self._on_close).pack(side="right", padx=(0, 8))
+
+        self.grab_set()
+        self.start_scan()
+        parent.wait_window(self)
+
+    # -- scanning ----------------------------------------------------------
+
+    def start_scan(self) -> None:
+        if self._scanning:
+            return
+        target = self.network_var.get().strip()
+        try:
+            hosts = discovery.hosts_in(target)
+        except ValueError as exc:
+            messagebox.showwarning("Network", f"Cannot scan {target}:\n\n{exc}", parent=self)
+            return
+
+        for child in self.results.winfo_children():
+            child.destroy()
+        self._found = []
+        self._checks = []
+        self._scan_error = ""
+        self._stop.clear()
+        self._scanning = True
+        self.add_button.configure(state="disabled")
+        self.scan_button.configure(state="disabled")
+        self.progress.configure(maximum=len(hosts), value=0)
+        self.status.configure(text=f"Scanning {len(hosts)} addresses…")
+
+        community = self.community_var.get().strip() or "public"
+
+        def worker() -> None:
+            def progress(done: int, total: int, found) -> None:
+                self.after(0, self._on_progress, done, total, found)
+
+            try:
+                discovery.scan(
+                    target,
+                    communities=[community],
+                    on_progress=progress,
+                    should_stop=self._stop.is_set,
+                )
+            except Exception as exc:  # noqa: BLE001 - report, never crash the UI
+                # Bind the message now: Python clears `exc` when the except
+                # block ends, so a lambda closing over it would raise NameError
+                # by the time Tk ran it.
+                self.after(0, self._on_scan_error, f"{exc}")
+            finally:
+                self.after(0, self._on_scan_done)
+
+        threading.Thread(target=worker, name="printer-scan", daemon=True).start()
+
+    def _on_progress(self, done: int, total: int, found) -> None:
+        if not self.winfo_exists():
+            return
+        self.progress.configure(value=done)
+        if found is not None:
+            self._add_result(found)  # before the count, so it isn't a row behind
+        self.status.configure(text=f"Checked {done} of {total}…  {len(self._found)} found")
+
+    def _on_scan_error(self, message: str) -> None:
+        if not self.winfo_exists():
+            return
+        self._scan_error = message
+        self.status.configure(text=f"Scan failed: {message}")
+
+    def _add_result(self, found) -> None:
+        known_hosts = {p.host for p in self.app.config.printers if p.host}
+        already = found.host in known_hosts
+
+        row = ttk.Frame(self.results, padding=(0, 4))
+        row.pack(fill="x", anchor="w")
+
+        var = tk.BooleanVar(value=not already)
+        check = ttk.Checkbutton(row, variable=var, state="disabled" if already else "normal")
+        check.grid(row=0, column=0, rowspan=2, sticky="nw", padx=(0, 6))
+
+        title = f"{found.host}    {found.display_name}"
+        if already:
+            title += "    (already monitored)"
+        ttk.Label(row, text=title, font=("Segoe UI", 10, "bold")).grid(
+            row=0, column=1, sticky="w"
+        )
+
+        detail = f"SNMPv{found.version}  ·  "
+        detail += (
+            f"{found.supply_count} supplies: " + ", ".join(found.supply_names[:4])
+            if found.supply_count
+            else "no supply data reported"
+        )
+        if found.serial:
+            detail += f"  ·  S/N {found.serial}"
+        ttk.Label(row, text=detail, foreground="#666", font=("Segoe UI", 8)).grid(
+            row=1, column=1, sticky="w"
+        )
+
+        self._found.append(found)
+        if not already:
+            self._checks.append((var, found))
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _on_scan_done(self) -> None:
+        if not self.winfo_exists():
+            return
+        self._scanning = False
+        self.scan_button.configure(state="normal")
+        self.add_button.configure(state="normal" if self._checks else "disabled")
+        if self._scan_error:
+            return  # leave the failure message up rather than overwriting it
+        if not self._found:
+            self.status.configure(
+                text=(
+                    "No printers answered. Check that SNMP is switched on at each printer "
+                    "and that the community string matches."
+                )
+            )
+        else:
+            new = len(self._checks)
+            self.status.configure(
+                text=f"Found {len(self._found)} printer(s), {new} not yet monitored."
+            )
+
+    # -- finishing ---------------------------------------------------------
+
+    def _on_add(self) -> None:
+        self.result = [found for var, found in self._checks if var.get()]
+        self._close()
+
+    def _on_close(self) -> None:
+        self.result = []
+        self._close()
+
+    def _close(self) -> None:
+        self._stop.set()
+        try:
+            self.grab_release()
+        except tk.TclError:
+            pass
+        self.destroy()
 
 
 # ---------------------------------------------------------------------------
