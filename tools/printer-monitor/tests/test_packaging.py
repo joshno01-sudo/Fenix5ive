@@ -119,9 +119,13 @@ def test_the_installer_ships_the_whole_folder_not_one_exe():
 
 
 def test_the_startup_shortcut_starts_minimised():
-    iss = ISS.read_text()
-    assert 'Parameters: "gui --minimized"' in iss
-    assert "{userstartup}" in iss
+    # Read directives, not the raw file: an earlier version of this test
+    # asserted "{userstartup}" was present — the very thing that put the
+    # shortcut in the administrator's profile — and went on passing after the
+    # fix only because the word survives in the comment explaining it.
+    directives = _iss_directives()
+    assert 'Parameters: "gui --minimized"' in directives
+    assert "{autostartup}" in directives
 
 
 def test_the_windowed_launcher_defaults_to_the_gui():
@@ -267,12 +271,32 @@ def test_the_monitor_command_takes_the_lock_too(tmp_path, capsys):
     assert "already running" in capsys.readouterr().err
 
 
-def _iss_directives() -> str:
-    """The .iss with comment lines stripped, so prose about a setting is not
-    mistaken for the setting itself."""
-    return "\n".join(
+def _iss_directives(section: str = "") -> str:
+    """The .iss with comment lines stripped, optionally just one section.
+
+    Two ways an assertion here can pass while the installer is wrong, both of
+    which have happened: the string survives in a comment explaining why it is
+    no longer used, or it appears in a different section. Stripping comments
+    handles the first; naming a section handles the second.
+    """
+    lines = [
         line for line in ISS.read_text().splitlines() if not line.lstrip().startswith(";")
-    )
+    ]
+    if not section:
+        return "\n".join(lines)
+
+    wanted = f"[{section}]".lower()
+    out: list[str] = []
+    inside = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            inside = stripped.lower() == wanted
+            continue
+        if inside:
+            out.append(line)
+    assert out, f"the .iss has no [{section}] section"
+    return "\n".join(out)
 
 
 def test_the_installer_startup_shortcut_is_not_user_scoped():
@@ -286,13 +310,19 @@ def test_the_installer_startup_shortcut_is_not_user_scoped():
 def test_the_path_task_writes_the_key_windows_actually_reads():
     """HKLM\\Environment looks right and changes nothing; the machine PATH
     lives under Session Manager."""
-    iss = ISS.read_text()
-    assert r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment" in iss
-    assert "ChangesEnvironment=yes" in iss
+    session_manager = r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
+
+    # The [Registry] entry specifically — the same string also appears in the
+    # [Code] block, so checking the whole file would pass with the wrong key here.
+    registry = _iss_directives("Registry")
+    assert session_manager in registry, "the PATH entry writes a key Windows does not read"
+    assert "ChangesEnvironment=yes" in _iss_directives("Setup")
+
     # ...and the check must read the same key it writes, or an upgrade appends
     # the folder to PATH all over again.
-    code = iss.split("[Code]")[1]
+    code = _iss_directives("Code")
     assert "HKEY_LOCAL_MACHINE" in code
+    assert session_manager in code
     assert "HKEY_CURRENT_USER" not in code
 
 
