@@ -20,6 +20,7 @@ from ..config import AppConfig, default_db_path
 from ..models import AlertEvent, PrinterReading
 from ..notify import Notifier
 from ..service import MonitorService
+from ..single_instance import AlreadyRunning, SingleInstance
 from ..storage import Storage
 from .dashboard import DashboardTab
 from .popup import AlertPopup
@@ -30,7 +31,12 @@ log = logging.getLogger(__name__)
 
 
 class MonitorApp:
-    def __init__(self, config: AppConfig, storage: Optional[Storage] = None):
+    def __init__(
+        self,
+        config: AppConfig,
+        storage: Optional[Storage] = None,
+        minimized: bool = False,
+    ):
         self.config = config
         self.storage = storage or Storage(default_db_path())
         self.last_readings: list[PrinterReading] = []
@@ -66,6 +72,10 @@ class MonitorApp:
         if config.enabled_printers():
             self.service.start()
             self.set_status("Monitoring started — polling now…")
+            if minimized:
+                # Started with Windows: monitor quietly rather than throwing a
+                # window at whoever just logged in. Alert popups still appear.
+                self.root.iconify()
         else:
             self.set_status("No printer IPs configured yet — open Settings → Printers.")
             self.notebook.select(self.settings_index)
@@ -337,8 +347,66 @@ class AlertsTab(ttk.Frame):
         self.refresh()
 
 
-def run_gui(config: Optional[AppConfig] = None, db_path: Optional[Path] = None) -> int:
+def run_gui(
+    config: Optional[AppConfig] = None,
+    db_path: Optional[Path] = None,
+    minimized: bool = False,
+) -> int:
+    """Open the window. Returns 2 if another copy already holds the lock."""
     config = config or AppConfig.load()
-    storage = Storage(db_path) if db_path else None
-    MonitorApp(config, storage=storage).mainloop()
+
+    lock = SingleInstance()
+    try:
+        lock.acquire()
+    except AlreadyRunning:
+        _warn_already_running()
+        return 2
+
+    try:
+        storage = Storage(db_path) if db_path else None
+        MonitorApp(config, storage=storage, minimized=minimized).mainloop()
+    finally:
+        lock.release()
     return 0
+
+
+# How long the "already running" notice stays up before closing itself.
+ALREADY_RUNNING_NOTICE_SECONDS = 8
+
+
+def _warn_already_running() -> None:
+    """Say so in a window, since a windowed build has nowhere to print.
+
+    Closes itself after a few seconds rather than using a modal message box.
+    The startup shortcut can fire while somebody already has the monitor open,
+    and a dialog nobody is there to dismiss would sit on the desktop for the
+    rest of the day.
+    """
+    log.info("another copy is already running; not starting a second one")
+    try:
+        root = tk.Tk()
+        root.title("Printer Supply Monitor")
+        root.resizable(False, False)
+        root.attributes("-topmost", True)
+
+        frame = ttk.Frame(root, padding=20)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(
+            frame,
+            text="The monitor is already running.",
+            font=("Segoe UI", 11, "bold"),
+        ).pack(anchor="w")
+        ttk.Label(
+            frame,
+            text=(
+                "Look for its window on the taskbar — it may have started\n"
+                "minimised with Windows."
+            ),
+            justify="left",
+        ).pack(anchor="w", pady=(6, 14))
+        ttk.Button(frame, text="OK", command=root.destroy).pack(anchor="e")
+
+        root.after(ALREADY_RUNNING_NOTICE_SECONDS * 1000, root.destroy)
+        root.mainloop()
+    except Exception:  # noqa: BLE001 - no display: the log line above will do
+        log.debug("could not show the already-running notice", exc_info=True)

@@ -87,3 +87,183 @@ jobs:
         # and `check` from Task Scheduler; neither may pull in tkinter.
         run: |
           python -c "import printer_monitor, sys; from printer_monitor import cli, service, notify; assert 'tkinter' not in sys.modules, 'tkinter got imported by the headless path'; print('headless imports are clean')"
+
+  build-windows:
+    name: Build the Windows program and installer
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Build
+        run: python -m PyInstaller build/PrinterMonitor.spec --noconfirm --clean
+
+      - name: Prove both programs run
+        shell: pwsh
+        # PrinterMonitor.exe is a GUI-subsystem binary with nowhere to print, so
+        # the console build is what gets driven here. Both come out of the same
+        # bundle, so exercising one proves the packaging for both.
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dist = 'dist\PrinterMonitor'
+          $cli  = Join-Path $dist 'printer-monitor.exe'
+          $gui  = Join-Path $dist 'PrinterMonitor.exe'
+
+          foreach ($exe in @($cli, $gui)) {
+            if (-not (Test-Path $exe)) { throw "$exe was not produced" }
+          }
+
+          # Version resource, so the file properties are not blank or stale.
+          $expected = (python -c "import sys; sys.path.insert(0,'.'); from printer_monitor.version import VERSION; print(VERSION)").Trim()
+          foreach ($exe in @($cli, $gui)) {
+            $stamped = (Get-Item $exe).VersionInfo.ProductVersion
+            Write-Host "$([System.IO.Path]::GetFileName($exe)) reports version $stamped"
+            if (-not $stamped.StartsWith($expected)) {
+              throw "$exe reports '$stamped', expected $expected"
+            }
+          }
+
+          # And the program actually works, from a clean slate.
+          $env:PRINTER_MONITOR_HOME = 'ci-home'
+          & $cli --version
+          if ($LASTEXITCODE -ne 0) { throw "--version exited $LASTEXITCODE" }
+          & $cli paths
+          if ($LASTEXITCODE -ne 0) { throw "paths exited $LASTEXITCODE" }
+          & $cli stock --seed
+          if ($LASTEXITCODE -ne 0) { throw "stock --seed exited $LASTEXITCODE" }
+          & $cli stock --csv > supplies.csv
+          if ($LASTEXITCODE -ne 0) { throw "stock --csv exited $LASTEXITCODE" }
+          if (-not (Select-String -Path supplies.csv -Pattern 'Part number' -Quiet)) {
+            throw 'the exported supply list does not look right'
+          }
+          Write-Host 'Both programs built and the command line works.'
+
+      - name: Check one instance at a time
+        shell: pwsh
+        # The installer offers a desktop icon *and* a startup entry, so a second
+        # launch on top of the first is a question of when, not if.
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Add-Type -AssemblyName System.Core
+          $listener = [System.Net.Sockets.TcpListener]::new(
+            [System.Net.IPAddress]::Parse('127.0.0.1'), 49517)
+          $listener.Start()
+          try {
+            $info = [System.Diagnostics.ProcessStartInfo]::new()
+            $info.FileName = (Resolve-Path 'dist\PrinterMonitor\PrinterMonitor.exe').Path
+            $info.UseShellExecute = $false
+            $proc = [System.Diagnostics.Process]::Start($info)
+            if (-not $proc.WaitForExit(60000)) {
+              try { $proc.Kill($true) } catch { }
+              throw 'a second copy kept running instead of bowing out'
+            }
+            if ($proc.ExitCode -ne 2) {
+              throw "expected exit code 2 from the second copy, got $($proc.ExitCode)"
+            }
+            Write-Host 'A second copy stands down when one is already running.'
+          } finally {
+            $listener.Stop()
+          }
+
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) {
+            Write-Host 'Inno Setup not on the image; installing it.'
+            choco install innosetup --no-progress -y | Out-String | Write-Host
+          }
+          if (-not (Test-Path $iscc)) {
+            throw "Inno Setup did not install; ISCC.exe not found at $iscc"
+          }
+          & $iscc installer\PrinterMonitor.iss
+          if ($LASTEXITCODE -ne 0) { throw "iscc exited with $LASTEXITCODE" }
+
+          $setup = 'installer\Output\PrinterMonitor-Setup.exe'
+          if (-not (Test-Path $setup)) { throw 'the installer was not produced' }
+          $size = [math]::Round((Get-Item $setup).Length / 1MB, 1)
+          Write-Host "Built PrinterMonitor-Setup.exe ($size MB)"
+
+      - name: Check the installer installs and uninstalls silently
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $setup = Resolve-Path 'installer\Output\PrinterMonitor-Setup.exe'
+          $target = 'C:\Program Files\Printer Supply Monitor'
+
+          # /VERYSILENT proves the whole install runs unattended; without
+          # /NORESTART a reboot request would hang the runner.
+          $p = Start-Process -FilePath $setup `
+                 -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' `
+                 -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "install exited with $($p.ExitCode)" }
+
+          foreach ($name in @('PrinterMonitor.exe', 'printer-monitor.exe', 'README.txt')) {
+            $path = Join-Path $target $name
+            if (-not (Test-Path $path)) { throw "$name is not in $target after installing" }
+          }
+          if (-not (Test-Path (Join-Path $target '_internal'))) {
+            throw 'the shared _internal folder did not install'
+          }
+          Write-Host "Installed to $target"
+
+          # The installed copy must be the working program, not just bytes.
+          $installed = Join-Path $target 'printer-monitor.exe'
+          $proc = [System.Diagnostics.Process]::Start(
+            [System.Diagnostics.ProcessStartInfo]@{
+              FileName = $installed; Arguments = '--version'
+              UseShellExecute = $false; RedirectStandardOutput = $true })
+          $out = $proc.StandardOutput.ReadToEnd()
+          if (-not $proc.WaitForExit(60000)) { throw 'the installed exe did not exit' }
+          Write-Host "Installed copy reports: $($out.Trim())"
+          if ($out -notmatch 'Printer Supply Monitor') { throw 'unexpected version output' }
+
+          # The startup shortcut is the whole point of installing it. An
+          # elevated install uses the all-users folder ({autostartup}); check
+          # the per-user one too so a change back is caught rather than missed.
+          $candidates = @(
+            (Join-Path ([System.Environment]::GetFolderPath('CommonStartup')) 'Printer Supply Monitor.lnk'),
+            (Join-Path ([System.Environment]::GetFolderPath('Startup')) 'Printer Supply Monitor.lnk')
+          )
+          $shortcut = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $shortcut) {
+            throw "the 'start with Windows' shortcut was not created; looked in: $($candidates -join ', ')"
+          }
+          Write-Host "Startup shortcut found at $shortcut" 
+          $link = (New-Object -ComObject WScript.Shell).CreateShortcut($shortcut)
+          if ($link.Arguments -notmatch '--minimized') {
+            throw "the startup shortcut does not start minimised: '$($link.Arguments)'"
+          }
+          Write-Host 'Startup shortcut present and starts minimised.'
+
+          $uninstaller = Get-ChildItem $target -Filter 'unins*.exe' | Select-Object -First 1
+          if (-not $uninstaller) { throw 'no uninstaller was created' }
+          $u = Start-Process -FilePath $uninstaller.FullName `
+                 -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' `
+                 -Wait -PassThru
+          if ($u.ExitCode -ne 0) { throw "uninstall exited with $($u.ExitCode)" }
+          if (Test-Path $shortcut) { throw 'the startup shortcut was left behind' }
+          Write-Host 'Uninstalled cleanly.'
+
+      - name: Upload the program
+        uses: actions/upload-artifact@v4
+        with:
+          name: PrinterMonitor-windows
+          path: tools/printer-monitor/dist/PrinterMonitor/
+          if-no-files-found: error
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: PrinterMonitor-installer
+          path: tools/printer-monitor/installer/Output/PrinterMonitor-Setup.exe
+          if-no-files-found: error

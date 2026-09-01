@@ -1,12 +1,20 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-build/
-dist/
 .pytest_cache/
 .coverage
 htmlcov/
 
+# PyInstaller output and the version resource it generates from version.py.
+build/PrinterMonitor/
+build/version_info_*.txt
+build/lib/
+build/bdist.*/
+dist/
+installer/Output/
+
 # Local runtime data, in case anyone points the app at its own folder.
 config.json
 *.db
+ci-home/
+ci-scratch/
