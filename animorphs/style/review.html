@@ -1,0 +1,246 @@
+<title>Animorphs Style Boards</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Oswald:wght@500;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+  :root {
+    --ink: #08080b;
+    --panel: #0f1119;
+    --panel-2: #161a26;
+    --rule: #26304a;
+    --cream: #e9e2c8;
+    --steel: #8f9bb3;
+    --steel-dim: #5a6580;
+    --gold: #c9b26a;
+    --andalite: #4f7fc2;
+    --display: "Big Shoulders Display", "Oswald", Impact, sans-serif;
+    --label: "Oswald", "Arial Narrow", sans-serif;
+    --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  }
+  html { color-scheme: dark; }
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--cream);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px 96px; }
+
+  header {
+    padding: 56px 0 28px;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px 48px;
+    align-items: end;
+  }
+  .eyebrow {
+    font-family: var(--label); font-weight: 500; font-size: 13px;
+    letter-spacing: .28em; text-transform: uppercase; color: var(--steel);
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--display); font-weight: 900; font-size: clamp(44px, 7vw, 88px);
+    line-height: .92; letter-spacing: .02em; margin: 0; text-wrap: balance;
+    text-transform: uppercase;
+  }
+  h1 span { color: var(--gold); }
+  .brief {
+    max-width: 38ch; color: var(--steel); margin: 0; font-size: 15px;
+  }
+  .brief strong { color: var(--cream); font-weight: 600; }
+
+  h2 {
+    font-family: var(--display); font-weight: 700; font-size: 34px; letter-spacing: .03em;
+    text-transform: uppercase; margin: 64px 0 6px; line-height: 1; text-wrap: balance;
+  }
+  .sub {
+    font-family: var(--label); font-size: 13px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--steel); margin: 0 0 22px;
+  }
+  p { max-width: 68ch; }
+
+  figure { margin: 0 0 40px; }
+  figure img {
+    display: block; width: 100%; height: auto; border: 1px solid var(--rule);
+    background: var(--panel);
+  }
+  figcaption {
+    display: grid; grid-template-columns: auto 1fr; gap: 6px 22px; align-items: baseline;
+    padding: 14px 2px 0; color: var(--steel); font-size: 14px;
+  }
+  figcaption .n {
+    font-family: var(--display); font-weight: 900; font-size: 26px; color: var(--gold);
+    letter-spacing: .04em; line-height: 1;
+  }
+  figcaption .t { font-family: var(--label); font-weight: 700; font-size: 15px; letter-spacing: .12em; text-transform: uppercase; color: var(--cream); }
+  figcaption .d { grid-column: 2; margin: 0; max-width: 78ch; }
+
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 800px) { .pair { grid-template-columns: 1fr; } header { grid-template-columns: 1fr; } }
+
+  .rules { overflow-x: auto; border: 1px solid var(--rule); }
+  table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 12px 16px; vertical-align: top; border-bottom: 1px solid var(--rule); }
+  th {
+    font-family: var(--label); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; font-size: 12.5px;
+    color: var(--steel); background: var(--panel);
+  }
+  thead th:nth-child(2) { color: var(--cream); border-bottom: 2px solid var(--gold); }
+  thead th:nth-child(3) { color: var(--cream); border-bottom: 2px solid var(--andalite); }
+  tbody th { color: var(--cream); font-weight: 500; letter-spacing: .06em; width: 16%; background: transparent; }
+  tbody tr:last-child td, tbody tr:last-child th { border-bottom: 0; }
+  td em { color: var(--steel); font-style: italic; }
+
+  .rec {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;
+    background: var(--panel); border: 1px solid var(--rule); padding: 32px;
+    border-left: 4px solid var(--gold);
+  }
+  .rec p { margin: 0 0 14px; }
+  .rec p:last-child { margin: 0; }
+  .rec h3 {
+    font-family: var(--display); font-weight: 900; font-size: 40px; text-transform: uppercase;
+    letter-spacing: .03em; line-height: .95; margin: 0 0 16px;
+  }
+  .rec h3 small { display: block; font-family: var(--label); font-weight: 500; font-size: 13px; letter-spacing: .24em; color: var(--steel); margin-bottom: 8px; }
+  .keep { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .keep li { display: grid; grid-template-columns: 92px 1fr; gap: 14px; font-size: 14.5px; }
+  .keep li b { font-family: var(--label); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 12.5px; padding-top: 3px; }
+  .keep li.timm b { color: var(--gold); }
+  .keep li.yj b { color: var(--andalite); }
+  @media (max-width: 800px) { .rec { grid-template-columns: 1fr; } }
+
+  .respond { margin-top: 56px; border-top: 1px solid var(--rule); padding-top: 28px; }
+  .options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 20px 0 0; padding: 0; list-style: none; }
+  .options li { background: var(--panel); border: 1px solid var(--rule); padding: 18px 20px; font-size: 14.5px; color: var(--steel); }
+  .options li b { display: block; font-family: var(--label); letter-spacing: .14em; text-transform: uppercase; font-size: 13px; color: var(--cream); margin-bottom: 8px; }
+  .options li kbd { font-family: var(--label); font-weight: 700; color: var(--gold); letter-spacing: .1em; }
+  @media (max-width: 800px) { .options { grid-template-columns: 1fr; } }
+
+  .sources { margin-top: 56px; color: var(--steel-dim); font-size: 13px; }
+  .sources ul { columns: 2; column-gap: 32px; padding-left: 18px; margin: 10px 0 0; }
+  .sources li { break-inside: avoid; margin-bottom: 6px; }
+  .sources a { color: var(--steel); text-decoration: none; border-bottom: 1px solid var(--rule); }
+  .sources a:hover, .sources a:focus-visible { color: var(--cream); border-color: var(--gold); outline: none; }
+  @media (max-width: 800px) { .sources ul { columns: 1; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">Fan adaptation · Look development · Round 2</p>
+      <h1>Animorphs <span>Style Boards</span></h1>
+    </div>
+    <p class="brief"><strong>The ask:</strong> drop the earlier cartoon styling and pitch the show at the <em>Batman / Superman Adventures</em> look or the <em>Young Justice</em> look. Both are drawn below with the same six kids so you can pick one and we move on to episode one.</p>
+  </header>
+
+  <h2>The two treatments</h2>
+  <p class="sub">Same characters, same crop, same lighting — only the drawing rules change</p>
+
+  <figure>
+    <img src="renders/01-lineup-dark-deco.png" alt="Six character busts of Jake, Rachel, Marco, Cassie, Tobias and Ax drawn in the angular Bruce Timm style against a black deco skyline" width="3200" height="1800">
+    <figcaption>
+      <span class="n">01</span><span class="t">Dark Deco · Batman &amp; Superman Adventures reference</span>
+      <p class="d">Unbroken angular outline at one weight, small eyes under a heavy lid, a one-stroke nose, hair as a single silhouette with one highlight, flat colour plus one cel shadow. Backgrounds are light painted onto black, the way Eric Radomski had the Gotham backgrounds done.</p>
+    </figcaption>
+  </figure>
+
+  <figure>
+    <img src="renders/02-lineup-grounded.png" alt="The same six characters drawn in the softer, more realistic Young Justice style against a dusk suburban horizon" width="3200" height="1800">
+    <figcaption>
+      <span class="n">02</span><span class="t">Grounded · Young Justice reference</span>
+      <p class="d">Realistic teen skulls with softer jaws, irises and eye highlights, lash detail, strand lines in the hair, two shade tones plus a highlight plane, and layered real-world clothing with seams and folds. Painted gradient sky over a believable suburban rooftop line.</p>
+    </figcaption>
+  </figure>
+
+  <h2>The world, in the recommended treatment</h2>
+  <p class="sub">Episode one scene study, alien model sheet, title card</p>
+
+  <figure>
+    <img src="renders/03-scene-construction-site.png" alt="Night scene: five kids in silhouette look at a landed alien fighter glowing blue in an abandoned construction site" width="3200" height="1800">
+    <figcaption>
+      <span class="n">03</span><span class="t">The construction site</span>
+      <p class="d">The opening of <em>The Invasion</em>. One colour of light: Elfangor's fighter throws blue onto the dirt, the kids and the steel frame; everything else is painted dark-on-black. The fighter is designed to read as "an Andalite made into a ship" — egg hull, two pods, a cocked tail with a scythe.</p>
+    </figcaption>
+  </figure>
+
+  <div class="pair">
+    <figure>
+      <img src="renders/04-aliens-model-sheet.png" alt="Model sheet: a blue Andalite in side view and a green bladed Hork-Bajir beside a height bar from four to seven feet" width="3200" height="1800">
+      <figcaption>
+        <span class="n">04</span><span class="t">The aliens</span>
+        <p class="d">Andalite and Hork-Bajir at true scale against a height bar. The Timm rules translate cleanly: angular planes, flat tan-and-blue, one shadow tone, blades as simple wedges.</p>
+      </figcaption>
+    </figure>
+    <figure>
+      <img src="renders/05-title-card.png" alt="Black title card reading ANIMORPHS in an art deco face above THE INVASION, PART ONE" width="3200" height="1800">
+      <figcaption>
+        <span class="n">05</span><span class="t">Title card</span>
+        <p class="d">The DCAU black-card convention: wordmark in a 1930s deco face, sunburst rules, episode title in gold. A cold open would cut to this card after the ship lands.</p>
+      </figcaption>
+    </figure>
+  </div>
+
+  <h2>Drawing rules, side by side</h2>
+  <p class="sub">What the research says each style actually does on the page</p>
+  <div class="rules">
+    <table>
+      <thead>
+        <tr><th></th><th>Dark Deco (Timm)</th><th>Grounded (Bourassa)</th></tr>
+      </thead>
+      <tbody>
+        <tr><th>Outline</th><td>Long unbroken lines, angular, one uniform weight (about 3 px at 1080p), pure black</td><td>Finer line (about 2 px), softer curves, dark brown rather than black</td></tr>
+        <tr><th>Head</th><td>Squared jaw on the men, pointed chin on the women, small features held to the centre of the face</td><td>Realistic teen skull, softer jaw, features spaced naturally</td></tr>
+        <tr><th>Eyes</th><td>Small whites, a black pupil dot, heavy straight upper lid</td><td>Almond shape, iris colour, pupil, one highlight, lash flick</td></tr>
+        <tr><th>Nose &amp; mouth</th><td>One stroke each</td><td>Bridge and nostrils; lip line plus a lower-lip shadow</td></tr>
+        <tr><th>Hair</th><td>One solid silhouette with a few sharp points, one highlight shape</td><td>Silhouette plus strand lines, two tones</td></tr>
+        <tr><th>Shading</th><td>Flat colour plus one cel shadow</td><td>Shadow tone, highlight plane, cloth folds</td></tr>
+        <tr><th>Clothing</th><td>One garment in two or three colours</td><td>Layered outfits, seams, hardware</td></tr>
+        <tr><th>Backgrounds</th><td>Light painted onto black, deco geometry, one colour of light per scene</td><td>Painted gradients, believable suburban and interior detail</td></tr>
+        <tr><th>Proportions</th><td>Fairly realistic but exaggerated: heroic upper body, slim legs, held poses</td><td>Realistic, grounded; fantasy elements arrive sparingly for impact</td></tr>
+        <tr><th>Cost to animate</th><td>Lowest: fewest lines and colours per cel, easiest to keep consistent across a fan crew</td><td>Higher: more line and more tones per cel, but "as long as the mechanics are sound the animators can handle it"</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Recommendation</h2>
+  <p class="sub">One call, and what we borrow from the other</p>
+  <div class="rec">
+    <div>
+      <h3><small>Recommended</small>Dark Deco, at teen proportions</h3>
+      <p>Animorphs is ordinary thirteen-year-olds hiding a war in a suburb, and its horror is what the morphs do to bodies. Timm's discipline serves that: a flat, quiet human world makes the morph sequences and the aliens land harder, and the light-on-black night backgrounds give us the construction site, the Yeerk pool and the mall basement almost for free.</p>
+      <p>The uniform line and the small colour count are also what keep a fan production consistent across episodes and artists.</p>
+    </div>
+    <ul class="keep">
+      <li class="timm"><b>Keep</b><span>Angular unbroken outline, small eyes, one-stroke nose, one cel shadow, solid hair silhouettes, dark deco backgrounds, black title cards.</span></li>
+      <li class="yj"><b>Borrow</b><span>Realistic teen proportions and grounding from <em>Young Justice</em>: no heroic upper bodies on the kids, real clothes, a believable town. They should read as teens, not junior superheroes.</span></li>
+      <li class="timm"><b>Aliens</b><span>Full Timm: angular planes, flat colour, blades as wedges. Board 04 is the model.</span></li>
+      <li class="yj"><b>Morphs</b><span>The one place we spend detail. Mid-morph frames get the Grounded treatment's extra tones so the wrongness of a half-tiger reads.</span></li>
+    </ul>
+  </div>
+
+  <section class="respond">
+    <h2 style="margin-top:0">How to respond</h2>
+    <p class="sub">Reply in the chat with one of these and we start episode one</p>
+    <ul class="options">
+      <li><b><kbd>A</kbd> · Approve Dark Deco</b>Boards 01, 03, 04 and 05 become the style bible. Next: script breakdown and storyboards for <em>The Invasion, Part One</em>.</li>
+      <li><b><kbd>B</kbd> · Go Grounded instead</b>Board 02 becomes the bible. The scene, aliens and title card get redrawn in that treatment before we move on.</li>
+      <li><b><kbd>C</kbd> · Adjust</b>Name the board and the change (a face, a colour, the ship, the wordmark). Everything is generated from one script, so revisions are quick.</li>
+    </ul>
+  </section>
+
+  <section class="sources">
+    <p class="eyebrow" style="margin:0">Research sources</p>
+    <ul>
+      <li><a href="https://tvtropes.org/pmwiki/pmwiki.php/Main/TimmStyle">TV Tropes — Timm Style</a></li>
+      <li><a href="https://characterdesignreferences.com/art-of-animation-4/art-of-batman-the-animated-series">Character Design References — Art of Batman: The Animated Series</a></li>
+      <li><a href="https://www.illustrationhistory.org/artists/bruce-timm">Illustration History — Bruce Timm</a></li>
+      <li><a href="https://dcau.fandom.com/wiki/Revamp">DCAU Wiki — Revamp (Superman: TAS design)</a></li>
+      <li><a href="https://dcanimated.com/young-justice/extras/young-justice-interview-with-phil-bourassa-1/">The World's Finest — Interview with Phil Bourassa</a></li>
+      <li><a href="https://youngjustice.fandom.com/wiki/Phil_Bourassa">Young Justice Wiki — Phil Bourassa</a></li>
+      <li><a href="https://animorphs.fandom.com/wiki/Rachel">Seerowpedia — Animorphs character pages</a></li>
+      <li><a href="https://www.hiracdelest.com/database/characters/jake.htm">Hirac Delest — Animorphs character database</a></li>
+    </ul>
+  </section>
+</div>
