@@ -1,0 +1,40 @@
+{
+  "style": "Bruce Timm style, Batman: The Animated Series, Superman: The Animated Series, DCAU character model sheet, 1990s Warner Bros television animation cel, clean uniform black line art, flat cel colors, minimal shading, angular streamlined design, small eyes, strong jaw, simple solid hair shape, three-quarter view, plain dark deco background, muted palette",
+  "negative": "photorealistic, 3d render, anime, manga, sketch, pencil, watercolor, painterly, soft shading, gradient shading, skin texture, blurry, lowres, extra fingers, deformed hands, text, watermark, signature, multiple views, cropped",
+  "characters": {
+    "jake": {
+      "subject": "a thirteen year old boy, tall, short brown hair swept forward, brown eyes, plain slate blue t-shirt, serious determined expression, reluctant leader",
+      "guide": "jake-head.png",
+      "seed": 20260904
+    },
+    "rachel": {
+      "subject": "a thirteen year old girl, tall, long straight blonde hair, blue eyes, fair skin, fitted plum top under a cropped denim jacket, confident smirk, fashionable",
+      "guide": "rachel-head.png",
+      "seed": 20260905
+    },
+    "marco": {
+      "subject": "a thirteen year old boy, short, olive skin, chin length dark hair, dark eyes, olive green hoodie, one eyebrow raised, sarcastic grin",
+      "guide": "marco-head.png",
+      "seed": 20260906
+    },
+    "cassie": {
+      "subject": "a thirteen year old Black girl, short cropped natural hair, dark brown skin, warm eyes, yellow t-shirt under denim overalls, gentle smile, kind",
+      "guide": "cassie-head.png",
+      "seed": 20260907
+    },
+    "tobias": {
+      "subject": "a thirteen year old boy, pale, shaggy dirty blond hair falling over his eyebrows, hazel eyes, worn red flannel shirt open over a grey t-shirt, quiet worried expression",
+      "guide": "tobias-head.png",
+      "seed": 20260908
+    },
+    "ax": {
+      "subject": "a thirteen year old boy of ambiguous ethnicity, light brown sugar skin, wavy medium brown hair with gold streaks, striking symmetrical face, plain off-white shirt, curious open-mouthed expression, alien in a human body",
+      "guide": "ax-head.png",
+      "seed": 20260909
+    }
+  },
+  "figures": {
+    "_comment": "Same characters, full body. Swap guide to <key>-figure.png and use a 832x1216 latent.",
+    "suffix": "full body standing, model sheet turnaround pose, arms relaxed, broad shoulders tapering to the waist, long legs, sneakers, plain background"
+  }
+}
