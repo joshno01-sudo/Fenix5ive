@@ -10,10 +10,10 @@ the site are stock, so they are intentionally not used here.
 |---|---|---|
 | `fenix5ive-logo-400x400-white.png` | **Page logo** (recommended) | 400 × 400 |
 | `fenix5ive-logo-400x400-dark.png` | Page logo, dark alternative | 400 × 400 |
-| `fenix5ive-cover-3024x512.png` | **Cover image** with wordmark (upload this one) | 3024 × 512 (2× of 1512 × 256) |
+| `fenix5ive-cover-3024x512.png` | **Cover image** with wordmark and tagline (upload this one) | 3024 × 512 (2× of 1512 × 256) |
 | `fenix5ive-cover-1512x256.png` | Same cover at LinkedIn's exact recommended size | 1512 × 256 |
 | `fenix5ive-cover-phoenix-only-3024x512.png` | Cover alternative, no text | 3024 × 512 |
-| `fenix5ive-first-post-1200x1200.png` | Image for the launch post | 1200 × 1200 |
+| `fenix5ive-first-post-1200x627.png` | Image for the launch post (tagline headline), LinkedIn's 1.91:1 post ratio | 1200 × 627 |
 
 Where to upload: Page super admin view → **Edit page** → **Header** (logo, cover) and the rest below.
 
@@ -44,13 +44,17 @@ Where to upload: Page super admin view → **Edit page** → **Header** (logo, c
 
 **Hashtags (Page can follow up to 3):** #VehicleWraps #WindowTint #RiverbendIL
 
-### Tagline (120 characters max) — pick one
+### Tagline (120 characters max)
 
-1. Custom vehicle wraps, vinyl graphics & window tint in the Riverbend. Cottage Hills, IL, since 2005.
-2. Wraps. Graphics. Tint. Signs. Turning Riverbend rides and storefronts into head-turners since 2005.
-3. Your brand, on the road. Custom wraps, signs, graphics & window tint from Cottage Hills, IL.
-4. If it sits still, we can wrap it. Vehicle wraps, vinyl graphics, signs & tint in Cottage Hills, IL.
-5. The Riverbend's custom vinyl, graphics & window tint shop since 2005.
+**Chosen:**
+
+Rise. Renew. Rebrand. Breathe new fire into your business. Wraps · Graphics · Tint · Signs · Cottage Hills, IL
+
+Alternates if it ever needs a refresh:
+
+- Rise. Renew. Rebrand. Breathe new fire into your business with vehicle wraps, vinyl graphics, window tint & signs.
+- Rise. Renew. Rebrand. Breathing new fire into Riverbend businesses with wraps, graphics, tint & signs since 2005.
+- Custom vehicle wraps, vinyl graphics & window tint in the Riverbend. Cottage Hills, IL, since 2005.
 
 ### Specialties (add each as its own entry)
 
@@ -58,7 +62,9 @@ Vehicle Wraps · Commercial Fleet Wraps · Window Tint · Ceramic Tint · Commer
 Vinyl Graphics · Custom Signs · Yard Signs · Custom Banners · Auto Detailing · Graphic Design ·
 Logo Design · Sublimation · Custom Printing
 
-### About / Overview (2,000 characters max — this is about 1,730)
+### About / Overview (2,000 characters max — this is about 1,750)
+
+Rise. Renew. Rebrand.
 
 Fenix 5ive is a custom vinyl, graphics, and window tint shop in Cottage Hills, Illinois. Since 2005 we have helped Riverbend businesses build their brand presence and get noticed, from full vehicle and fleet wraps to storefront signage to flawless window tint.
 
@@ -77,9 +83,9 @@ We keep pricing in line with what local organizations need, sponsor area youth a
 Visit us at 125 West Macarthur Dr, Cottage Hills, IL 62018, weekdays 9 am to 5 pm.
 Call 618-251-4221 · Text 618-917-4491 · fenix5ive@gmail.com · fenix5ive.com
 
-## Launch post (use with `fenix5ive-first-post-1200x1200.png`)
+## Launch post (use with `fenix5ive-first-post-1200x627.png`)
 
-Fenix 5ive is now on LinkedIn.
+Rise. Renew. Rebrand. Fenix 5ive is now on LinkedIn.
 
 Since 2005 we've been helping Riverbend businesses get noticed: custom vehicle and fleet wraps, vinyl graphics, signs and banners, window tint, and in-house design from an art team with backgrounds at Marvel, IDW Comics, and Disney.
 
