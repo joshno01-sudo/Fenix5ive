@@ -6,16 +6,20 @@ styling toward the look of *Batman: The Animated Series* / *Superman: The
 Animated Series* (the Bruce Timm "Timm style") or *Young Justice* (Phil
 Bourassa's designs).
 
-Both treatments are drawn here with the same six kids so they can be compared
-like for like, plus a first-episode scene, an alien model sheet and a title
-card in the treatment we recommend.
+Round one drew both treatments side by side. The direction after review is
+Timm's style as closely as we can mirror it, so round two rebuilds the
+characters on his construction: three-quarter heads, lantern jaw and squared
+chin on the boys, heart face and pointed chin on the girls, small eyes with
+dot pupils under wedge brows, one thin uniform outline, flat colour with no
+face shading. The kids appear as heads and as a full-figure lineup, plus a
+first-episode scene, an alien model sheet and a title card.
 
 ## Files
 
 | File | What it is |
 | --- | --- |
-| `renders/01-lineup-dark-deco.png` | Jake, Rachel, Marco, Cassie, Tobias, Ax — Timm / DCAU treatment |
-| `renders/02-lineup-grounded.png` | The same six — Young Justice treatment |
+| `renders/01-heads.png` | Jake, Rachel, Marco, Cassie, Tobias, Ax — three-quarter heads on Timm construction |
+| `renders/02-figures.png` | The same six as a full-figure lineup against a head-count scale |
 | `renders/03-scene-construction-site.png` | Episode one scene study: the abandoned construction site, Elfangor's fighter |
 | `renders/04-aliens-model-sheet.png` | Andalite (Ax) and a Hork-Bajir Controller against a height bar |
 | `renders/05-title-card.png` | "The Invasion, Part One" title card in the DCAU black-card convention |
@@ -71,7 +75,24 @@ python3 render_styleboards.py   # writes renders/*.svg
   as "a thoughtful and respectful update of a classic" rather than a
   redesign for its own sake.
 
-## The two treatments as drawing rules
+## Timm construction, as used in the boards
+
+- **Three-quarter view.** The face is turned so the nose breaks the far-side
+  silhouette as one straight bridge line to a sharp tip. The near jaw is a
+  straight diagonal from under the ear to the chin.
+- **Boys:** broad squared chin, thick neck as wide as the jaw, wedge brows
+  sitting almost on the lid, small eye whites with a dot pupil, one-line
+  mouth with a chin crease. **Girls:** heart-shaped face to a small pointed
+  chin, larger eyes with a heavy lid and a lash flick, thin arched brows, a
+  small upturned nose, full painted lips.
+- **Hair** is one solid silhouette with sharp points and one highlight shape.
+- **One thin uniform black outline, flat colour, no shading on the face.** The
+  single shadow kept is under the jaw on the neck.
+- **Bodies:** broad shoulders tapering to the waist, thighs tapering to the
+  knee, blocky hands. Heights are teen heights, Jake at 7 heads down to
+  Marco at 6, rather than Timm's 8-head adults.
+
+## The two treatments as drawing rules (round one research)
 
 | | Dark Deco (Timm) | Grounded (Bourassa) |
 | --- | --- | --- |
@@ -85,9 +106,10 @@ python3 render_styleboards.py   # writes renders/*.svg
 | Backgrounds | Light painted onto black, deco geometry, one colour of light | Painted gradients, believable suburban horizon |
 | Animation cost | Low: fewest lines, fewest colours | Higher: more line, more tones per cel |
 
-## Recommendation
+## Direction
 
-**Dark Deco, with the kids kept at realistic teen proportions.** Animorphs is
+**Dark Deco (Timm), mirrored as closely as we can, with the kids kept at
+teen proportions.** Animorphs is
 a story about ordinary thirteen-year-olds hiding a war in a suburb, and its
 horror is in what the morphs do to bodies. Timm's discipline suits that: the
 flat, quiet human world makes the morph sequences and the aliens land harder,
@@ -97,9 +119,8 @@ production consistent across episodes. What we borrow from *Young Justice* is
 the proportion and the grounding — no heroic upper bodies on the kids, real
 clothes, a believable town — so it reads as teens, not as junior superheroes.
 
-The alternative is the full Grounded treatment (board 02) if a more
-naturalistic, contemporary look is preferred. Both are built from the same
-character data in `render_styleboards.py`, so switching costs nothing.
+The Grounded (Young Justice) treatment from round one was dropped at review;
+its research stays above for reference.
 
 ## Character notes used in the boards
 

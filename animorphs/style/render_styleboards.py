@@ -172,11 +172,10 @@ def svg_doc(body, bg, w=W, h=H):
 
 # --------------------------------------------------------------- palettes
 
-# Two treatments. Line weights are in "head units" (head = 100 tall).
-STYLES = {
-    "dcau": dict(line="#0a0a0d", lw=3.4, thin=2.4, tones=1, eye="timm"),
-    "yj": dict(line="#1c1519", lw=1.9, thin=1.3, tones=2, eye="iris"),
-}
+LINE = "#0b0b0e"
+LW = 2.1        # one uniform outline weight, in head units (head = 100 tall)
+THIN = 1.5
+STYLES = {"dcau": dict(line=LINE, lw=LW, thin=THIN)}
 
 
 def shade(hexcol, k):
@@ -194,333 +193,194 @@ def shade(hexcol, k):
 
 # -------------------------------------------------------------- characters
 #
-# Head coordinate system: head is 100 units tall, top of skull at y=0,
-# chin at y=100, centred on x=0. Busts extend to about y=190.
+# Timm construction. Heads are drawn in three-quarter view, face turned to
+# the viewer's left, in a coordinate system 100 units tall (top of skull at
+# y=0, chin at y=100). The nose breaks the far-side silhouette; the near jaw
+# runs as a straight diagonal from under the ear to a broad squared chin on
+# the boys and a small pointed chin on the girls. Small eyes, dot pupils,
+# wedge brows, one-line mouth, flat colour, no face shading. Bodies for the
+# full-figure lineup are in the same units (1 head = 100).
 
 CHARS = [
-    dict(key="jake", name="JAKE", tag="the reluctant leader", g="m",
-         skin="#efc39a", hair="#6a4326", hair_hi="#8d5f3a", eyes="#5a3b22",
-         cloth="#3d6795", cloth2="#9aa3ad", outfit="tee",
-         brow="flat", mouth="flat"),
-    dict(key="rachel", name="RACHEL", tag="Xena, warrior princess", g="f",
-         skin="#f5d3b6", hair="#e6c46a", hair_hi="#f4dc98", eyes="#3f78b5",
-         cloth="#7a3d7c", cloth2="#4c6a94", outfit="jacket",
-         brow="arch", mouth="smirk"),
-    dict(key="marco", name="MARCO", tag="the wise guy", g="m",
-         skin="#d9ad80", hair="#221a19", hair_hi="#3d3231", eyes="#3a2418",
-         cloth="#556b52", cloth2="#2f3d2e", outfit="hoodie",
-         brow="raised", mouth="grin"),
-    dict(key="cassie", name="CASSIE", tag="the heart", g="f",
-         skin="#8a5a3c", hair="#1c1412", hair_hi="#33261f", eyes="#2c1a10",
-         cloth="#e3bd4e", cloth2="#4a6a96", outfit="overalls",
-         brow="soft", mouth="smile"),
-    dict(key="tobias", name="TOBIAS", tag="the outsider", g="m",
-         skin="#edd0b4", hair="#c6a463", hair_hi="#dcc088", eyes="#6b7a49",
-         cloth="#8b3a33", cloth2="#9a9793", outfit="flannel",
-         brow="worried", mouth="flat"),
-    dict(key="ax", name="AX", tag="Aximili, in human morph", g="m",
-         skin="#c79c73", hair="#7d5a34", hair_hi="#b58a4e", eyes="#5a4020",
-         cloth="#e8e3d8", cloth2="#b9b1a3", outfit="tee",
-         brow="curious", mouth="open"),
+    dict(key="jake", name="JAKE", tag="the reluctant leader", g="m", heads=7.0, build="m",
+         skin="#e6b892", hair="#5a3a22", hair_hi="#7c5636", lip=None,
+         top="#4d6478", top2="#3a4d5e", pants="#3a4a63", shoes="#2a2a30",
+         outfit="tee", brow="flat", mouth="flat"),
+    dict(key="rachel", name="RACHEL", tag="Xena, warrior princess", g="f", heads=6.9, build="f",
+         skin="#ecc4a4", hair="#d8b86a", hair_hi="#ecd48f", lip="#b7676a",
+         top="#6f3f66", top2="#4c5e80", pants="#46577a", shoes="#26262c",
+         outfit="jacket", brow="arch", mouth="smirk"),
+    dict(key="marco", name="MARCO", tag="the wise guy", g="m", heads=6.0, build="s",
+         skin="#cfa176", hair="#1f1a1c", hair_hi="#3b3f5a", lip=None,
+         top="#6b7061", top2="#4f5347", pants="#2f333c", shoes="#1e1e22",
+         outfit="hoodie", brow="raised", mouth="smirk"),
+    dict(key="cassie", name="CASSIE", tag="the heart", g="f", heads=6.1, build="f",
+         skin="#7d4f33", hair="#171214", hair_hi="#33343f", lip="#8e4c46",
+         top="#c9a94a", top2="#4a5f86", pants="#4a5f86", shoes="#5a3f2b",
+         outfit="overalls", brow="soft", mouth="smile"),
+    dict(key="tobias", name="TOBIAS", tag="the outsider", g="m", heads=6.6, build="s",
+         skin="#e9c3a1", hair="#b89a5c", hair_hi="#d2b87c", lip=None,
+         top="#7a3b33", top2="#8c8a86", pants="#3f4a5e", shoes="#3a3a3e",
+         outfit="flannel", brow="worried", mouth="flat"),
+    dict(key="ax", name="AX", tag="Aximili, in human morph", g="m", heads=6.8, build="m",
+         skin="#c2966c", hair="#74563a", hair_hi="#a37d4e", lip=None,
+         top="#d9d3c6", top2="#b3ada0", pants="#5a5a5e", shoes="#2c2c30",
+         outfit="tee", brow="curious", mouth="open"),
 ]
 
 
-def face_outline(g, mode):
+def head_outline(g):
     if g == "m":
-        half = [(0, 0), (17, 1), (30, 6), (38, 16), (42, 30), (42, 46),
-                (39, 62), (32, 80), (17, 96), (9, 100), (0, 100)]
-    else:
-        half = [(0, 0), (15, 1), (27, 6), (34, 16), (37, 30), (36, 47),
-                (33, 63), (26, 81), (12, 97), (5, 100.5), (0, 101)]
-    pts = sym(half)
-    if mode == "dcau":
-        return pts
-    # a softer, less lantern-jawed head for the grounded treatment
-    return [(x * 0.98, y) for x, y in pts]
+        return [(2, 0), (26, 3), (42, 14), (47, 32), (45, 50), (42, 62), (37, 70), (14, 94), (6, 99),
+                (-8, 100), (-14, 96), (-16, 90), (-15, 85), (-17, 80), (-20, 74), (-22, 71), (-32, 66),
+                (-23, 46), (-24, 30), (-18, 14), (-6, 3)]
+    return [(2, 0), (24, 3), (40, 14), (44, 32), (43, 48), (38, 64), (28, 80), (14, 92), (2, 100),
+            (-8, 97), (-13, 90), (-15, 84), (-17, 80), (-18, 75), (-20, 71), (-27, 67), (-21, 48),
+            (-22, 28), (-16, 12), (-6, 3)]
 
 
-def face_shadow(g, mode):
-    """Right-hand cel shadow: temple, cheek, jaw and under the chin."""
+def neck_pts(g):
+    return [(-10, 96), (-8, 126), (34, 126), (36, 84)] if g == "m" else [(-8, 96), (-6, 126), (22, 126), (24, 86)]
+
+
+def draw_neck(c):
+    g = c["g"]
+    out = [poly(neck_pts(g), c["skin"], LINE, LW)]
+    # the one shadow Timm keeps: under the jaw, on the neck
     if g == "m":
-        pts = [(24, 30), (42, 30), (42, 46), (39, 62), (32, 80), (17, 96),
-               (9, 100), (-9, 100), (-9, 97), (10, 92), (24, 74), (28, 56)]
+        out.append(poly([(-9, 101), (6, 100), (14, 95), (36, 72), (36, 110), (-9, 114)], shade(c["skin"], 0.74)))
     else:
-        pts = [(22, 32), (37, 30), (36, 47), (33, 63), (26, 81), (12, 97),
-               (5, 100.5), (-5, 100.5), (-3, 97), (8, 92), (20, 74), (24, 56)]
-    return pts
+        out.append(poly([(-7, 99), (2, 101), (14, 93), (24, 84), (24, 108), (-7, 110)], shade(c["skin"], 0.74)))
+    return out
 
 
-def draw_eyes(c, st, mode):
+def draw_ear(c):
     g = c["g"]
-    ex, ey = (17, 48) if g == "m" else (16, 47)
-    out = []
-    for sgn in (-1, 1):
-        x = sgn * ex
-        if st["eye"] == "timm":
-            wdt, hgt = (7, 4) if g == "m" else (7.5, 5)
-            white = [(x - wdt, ey - 1), (x - wdt * 0.55, ey - hgt),
-                     (x + wdt * 0.55, ey - hgt), (x + wdt, ey - 1),
-                     (x + wdt * 0.55, ey + hgt * 0.7), (x - wdt * 0.55, ey + hgt * 0.7)]
-            out.append(poly(white, "#f5f2ee", st["line"], st["thin"]))
-            px = x + 1.2 * sgn
-            out.append(circle(px, ey - 0.5, 2.6 if g == "m" else 2.9, st["line"]))
-            # heavy upper lid line, the Timm signature
-            out.append(pline([(x - wdt, ey - 1), (x - wdt * 0.55, ey - hgt),
-                              (x + wdt * 0.55, ey - hgt), (x + wdt, ey - 1)],
-                             st["line"], st["lw"]))
-            if g == "f":
-                out.append(pline([(x + wdt * sgn, ey - 1), (x + (wdt + 3.5) * sgn, ey - 3.5)],
-                                 st["line"], st["lw"]))
-        else:
-            wdt, hgt = (8, 5) if g == "m" else (8.5, 5.8)
-            eye_pts = [(x - wdt, ey), (x - wdt * 0.5, ey - hgt), (x + wdt * 0.5, ey - hgt * 0.95),
-                       (x + wdt, ey - 0.5), (x + wdt * 0.5, ey + hgt * 0.75),
-                       (x - wdt * 0.5, ey + hgt * 0.75)]
-            out.append(path(smooth(eye_pts, True, 0.9), "#f7f4f0", st["line"], st["thin"]))
-            ix = x + 0.8 * sgn
-            out.append(f'<clipPath id="eye{c["key"]}{mode}{sgn+1}">'
-                       f'<path d="{smooth(eye_pts, True, 0.9)}"/></clipPath>')
-            clip = f'clip-path="url(#eye{c["key"]}{mode}{sgn+1})"'
-            out.append(circle(ix, ey, 3.9, c["eyes"], st["line"], 0.8, clip))
-            out.append(circle(ix, ey, 1.9, st["line"], extra=clip))
-            out.append(circle(ix - 1.3, ey - 1.4, 0.9, "#ffffff", extra=clip))
-            # lid line, lash flick for the girls
-            out.append(path(smooth([(x - wdt, ey), (x - wdt * 0.5, ey - hgt),
-                                    (x + wdt * 0.5, ey - hgt * 0.95), (x + wdt, ey - 0.5)],
-                                   False, 0.9), None, st["line"], st["lw"] * 1.05))
-            if g == "f":
-                out.append(pline([(x + wdt * sgn, ey - 0.5), (x + (wdt + 3) * sgn, ey - 3)],
-                                 st["line"], st["lw"]))
-                out.append(path(smooth([(x - wdt * 0.5, ey + hgt * 0.75), (x + wdt * 0.5, ey + hgt * 0.75)],
-                                       False), None, st["line"], st["thin"] * 0.8))
-    return out
+    pts = ([(41, 49), (49, 46), (53, 55), (50, 65), (43, 67)] if g == "m"
+           else [(38, 50), (46, 47), (50, 56), (47, 65), (40, 66)])
+    inner = [(46, 52), (48, 58), (45, 62)] if g == "m" else [(43, 53), (45, 58), (42, 62)]
+    return [poly(pts, c["skin"], LINE, LW), pline(inner, LINE, THIN)]
 
 
-def draw_brows(c, st, mode):
+def draw_eyes(c):
     g = c["g"]
-    ex, by = (17, 38) if g == "m" else (16, 37.5)
-    kind = c["brow"]
+    white = "#efece4"
     out = []
-    thick = 3.2 if g == "m" else 2.2
-    for sgn in (-1, 1):
-        x = sgn * ex
-        inner, outer = x - 9 * sgn, x + 9 * sgn
-        yi, yo = by, by
-        if kind == "flat":
-            yi, yo = by - 0.5, by - 1
-        elif kind == "arch":
-            yi, yo = by + 1.5, by - 1.5
-        elif kind == "raised":
-            # one brow up (Marco's permanent scepticism)
-            yi, yo = (by - 1, by - 2) if sgn == 1 else (by + 2.5, by - 0.5)
-            if sgn == 1:
-                yi, yo = by - 5, by - 2.5
-        elif kind == "soft":
-            yi, yo = by + 0.5, by - 2
-        elif kind == "worried":
-            yi, yo = by - 3.5, by + 0.5
-        elif kind == "curious":
-            yi, yo = by - 3, by - 3
-        mid = ((inner + outer) / 2, min(yi, yo) - 1.5)
-        top = [(inner, yi), mid, (outer, yo)]
-        bottom = [(outer, yo + thick * 0.6), (mid[0], mid[1] + thick), (inner, yi + thick * 0.8)]
-        pts = top + bottom
-        if mode == "dcau":
-            out.append(poly(pts, st["line"]))
-        else:
-            out.append(path(smooth(pts, True, 0.7), c["hair"] if c["hair"] != "#e6c46a" else "#a77f2e",
-                            st["line"], 0.7))
+    if g == "m":
+        near = [(2, 47), (18, 45.5), (17, 50), (11, 54), (4, 52.5)]
+        far = [(-21, 47.5), (-8, 46.5), (-8, 50), (-13, 53.5), (-19, 52)]
+        out += [poly(near, white, LINE, THIN), poly(far, white, LINE, THIN)]
+        out += [circle(10, 49.3, 2.4, LINE), circle(-13.5, 49.6, 2.1, LINE)]
+        out += [pline([(2, 47), (18, 45.5)], LINE, LW * 1.4), pline([(-21, 47.5), (-8, 46.5)], LINE, LW * 1.4)]
+    else:
+        near = [(0, 46), (19, 44.5), (18, 50), (12, 55), (3, 53)]
+        far = [(-21, 46.5), (-8, 45.5), (-8, 50), (-14, 54.5), (-20, 52)]
+        out += [poly(near, white, LINE, THIN), poly(far, white, LINE, THIN)]
+        out += [circle(10, 49.6, 3.0, LINE), circle(-13.5, 50, 2.7, LINE)]
+        out += [pline([(0, 46), (19, 44.5)], LINE, LW * 1.6), pline([(-21, 46.5), (-8, 45.5)], LINE, LW * 1.6)]
+        # lash flicks at the outer corners
+        out += [pline([(19, 44.5), (24.5, 41.5)], LINE, LW * 1.3), pline([(-21, 46.5), (-25.5, 44)], LINE, LW * 1.2)]
     return out
 
 
-def draw_nose(c, st, mode):
-    g = c["g"]
-    if st["eye"] == "timm":
-        # the single-stroke Timm nose: bridge line down, tiny hook
-        if g == "m":
-            return [pline([(2, 54), (6, 66), (1, 69)], st["line"], st["lw"])]
-        return [pline([(1.5, 56), (4.5, 65), (0.5, 67.5)], st["line"], st["lw"] * 0.9)]
-    out = [path(smooth([(2, 52), (4, 60), (5.5, 66), (1.5, 69)], False), None,
-                st["line"], st["lw"])]
-    out.append(path(smooth([(-6, 66.5), (-4, 69), (-1, 69.5)], False), None,
-                    st["line"], st["thin"]))
-    out.append(path(smooth([(3.5, 67), (6.5, 68), (7.5, 65.5)], False), None,
-                    st["line"], st["thin"]))
-    return out
+def draw_brows(c):
+    g, kind = c["g"], c["brow"]
+    if g == "m":
+        near = [(0, 44.5), (20, 42), (21, 45), (2, 47.5)]
+        far = [(-23, 45.5), (-10, 43.5), (-9, 46.5), (-22, 48.5)]
+        if kind == "raised":        # Marco: one brow up
+            near = [(x, y - 3.5) for x, y in near]
+        elif kind == "worried":     # Tobias: inner ends lifted
+            near = [(0, 41.5), (20, 41.5), (21, 44.5), (2, 44.5)]
+            far = [(-23, 44.5), (-10, 41), (-9, 44), (-22, 47.5)]
+        elif kind == "curious":     # Ax: both up
+            near = [(x, y - 2.5) for x, y in near]
+            far = [(x, y - 2.5) for x, y in far]
+        return [poly(near, LINE), poly(far, LINE)]
+    # girls: thin arched strokes
+    lift = 1.5 if kind == "arch" else 0
+    near = [(0, 42), (9, 38.5 - lift), (20, 40.5)]
+    far = [(-22, 43), (-15, 40 - lift), (-9, 41.5)]
+    return [path(smooth(near, False), None, LINE, LW * 1.15), path(smooth(far, False), None, LINE, LW * 1.05)]
 
 
-def draw_mouth(c, st, mode):
-    kind = c["mouth"]
-    y = 81 if c["g"] == "m" else 80
+def draw_nose(c):
+    # the nose is already the far-side silhouette; add the nostril
+    return [pline([(-26, 69.5), (-20, 70.5)], LINE, THIN)] if c["g"] == "m" else [pline([(-22, 69.5), (-18, 70.5)], LINE, THIN)]
+
+
+def draw_mouth(c):
+    g, kind = c["g"], c["mouth"]
     out = []
-    if kind == "flat":
-        pts = [(-7, y), (0, y + 0.5), (7, y)]
-    elif kind == "smirk":
-        pts = [(-7, y + 1), (0, y + 0.5), (8, y - 2.5)]
-    elif kind == "grin":
-        pts = [(-9, y - 2.5), (0, y + 2), (9, y - 3)]
-    elif kind == "smile":
-        pts = [(-7, y - 1), (0, y + 1.5), (7, y - 1)]
-    elif kind == "open":
-        pts = [(-6, y - 1), (0, y), (6, y - 1)]
+    if g == "m":
+        pts = {"flat": [(-15, 81), (-5, 82), (4, 81.5)],
+               "smirk": [(-15, 81.5), (-4, 82), (6, 79.5)],
+               "grin": [(-15, 80), (-5, 83.5), (6, 79)],
+               "open": [(-14, 80), (-5, 80.5), (4, 80.5)]}.get(kind, [(-15, 81), (4, 81.5)])
+        if kind == "open":
+            out.append(poly([(-13, 80.5), (2, 80.5), (0, 85), (-9, 85)], "#3a1a1c", LINE, THIN))
+        out.append(path(smooth(pts, False), None, LINE, LW))
+        out.append(pline([(-9, 89), (-2, 89.5)], LINE, THIN))   # chin crease
     else:
-        pts = [(-7, y), (7, y)]
-    lw = st["lw"] if mode == "dcau" else st["lw"] * 0.95
-    out.append(path(smooth(pts, False), None, st["line"], lw))
-    if kind in ("grin",):
-        # teeth
-        out.append(path(smooth([(-8, y - 2), (0, y + 1.5), (8, y - 2.5)], False) +
-                        " L 8,%s L -8,%s Z" % (f1(y - 2.5), f1(y - 2)), "#f5f2ee", st["line"], st["thin"]))
-        out.append(path(smooth(pts, False), None, st["line"], lw))
-    if kind == "open":
-        out.append(path("M -5,%s Q 0,%s 5,%s Z" % (f1(y - 0.5), f1(y + 7), f1(y - 0.5)),
-                        "#3a1b1d", st["line"], st["thin"]))
-    if mode == "yj":
-        # lower lip shadow line
-        out.append(path(smooth([(-4.5, y + 5), (0, y + 6), (4.5, y + 5)], False), None,
-                        st["line"], st["thin"] * 0.9))
+        lips = [(-15, 79.5), (-9, 78), (0, 79), (2, 80.5), (-3, 83), (-12, 82.5)]
+        if kind == "smile":
+            lips = [(-15, 79), (-9, 78), (0, 78.5), (3, 78.5), (-3, 82.5), (-12, 82.5)]
+        out.append(poly(lips, c["lip"] or shade(c["skin"], 0.8), LINE, THIN))
+        mid = [(-15, 79.5), (-6, 80.5), (2, 80.5)] if kind != "smile" else [(-15, 79), (-6, 80.5), (3, 78.5)]
+        out.append(path(smooth(mid, False), None, LINE, THIN * 1.2))
     return out
 
 
-def draw_ears(c, st, mode):
-    out = []
-    g = c["g"]
-    x0 = 42 if g == "m" else 36
-    for sgn in (-1, 1):
-        pts = [(sgn * (x0 - 2), 46), (sgn * (x0 + 5), 44), (sgn * (x0 + 7), 52),
-               (sgn * (x0 + 4), 62), (sgn * (x0 - 1), 64)]
-        out.append(shape(pts, mode, c["skin"], st["line"], st["lw"]))
-        out.append(shape([(sgn * (x0 + 3), 49), (sgn * (x0 + 4), 55), (sgn * (x0 + 1), 59)],
-                         mode, None, st["line"], st["thin"], closed=False))
-    return out
+# hair: returns (behind, in_front) lists. Solid silhouettes, sharp points.
+
+def hair_jake(c):
+    front = [(-32, 24), (-28, 10), (-16, 1), (0, -4), (20, -3), (38, 4), (49, 18), (50, 38), (46, 50), (41, 49),
+             (40, 44), (36, 32), (30, 22), (20, 18), (10, 20), (0, 16), (-8, 22), (-18, 18), (-26, 26)]
+    return [], [poly(front, c["hair"], LINE, LW), poly([(-6, 4), (14, 0), (30, 6), (20, 10), (4, 10)], c["hair_hi"])]
 
 
-# ------------------------------------------------------------------- hair
-
-def hair_jake(c, st, mode):
-    hi = c["hair_hi"]
-    front = [(-44, 34), (-42, 14), (-32, 2), (-12, -5), (12, -8), (34, -3), (46, 6),
-             (56, 12), (48, 22), (44, 34), (40, 28), (32, 20), (24, 26), (14, 18), (4, 24),
-             (-6, 18), (-16, 26), (-26, 20), (-34, 28), (-40, 36)]
-    out = [shape(front, mode, c["hair"], st["line"], st["lw"])]
-    if mode == "dcau":
-        out.append(poly([(-8, 4), (10, -2), (34, 0), (24, 8), (4, 10)], hi))
-    else:
-        out.append(path(smooth([(-10, 6), (8, -1), (30, 1), (22, 7), (2, 11)], True), hi))
-        for s in ([(-30, 4), (-20, 14)], [(0, -4), (8, 8)], [(28, -1), (36, 14)], [(44, 10), (50, 18)]):
-            out.append(path(smooth(s, False), None, shade(c["hair"], 0.6), st["thin"]))
-    return [], out
+def hair_rachel(c):
+    back = [(-30, 20), (-22, 4), (-4, -6), (18, -6), (38, 2), (48, 18), (52, 40), (56, 80), (60, 130), (62, 200),
+            (-46, 200), (-44, 130), (-40, 80), (-34, 44)]
+    front = [(-26, 22), (-20, 8), (-6, -2), (14, -4), (34, 2), (46, 16), (48, 34), (44, 46), (40, 50), (36, 40),
+             (28, 26), (16, 20), (2, 22), (-10, 18), (-20, 26), (-24, 36)]
+    lock = [(44, 44), (52, 70), (56, 120), (50, 162), (40, 150), (44, 110), (40, 70)]
+    return ([poly(back, c["hair"], LINE, LW)],
+            [poly(front, c["hair"], LINE, LW), poly(lock, c["hair"], LINE, LW),
+             poly([(-10, 4), (10, -1), (30, 6), (20, 12), (0, 12)], c["hair_hi"])])
 
 
-def hair_rachel(c, st, mode):
-    back = [(-48, 26), (-42, 0), (-22, -12), (0, -14), (22, -12), (42, 0), (48, 26),
-            (54, 80), (62, 140), (66, 190), (-66, 190), (-62, 140), (-54, 80)]
-    left = [(-40, 8), (-24, -8), (-2, -12), (-2, -2), (-12, 12), (-24, 34), (-34, 62),
-            (-46, 74), (-44, 44), (-44, 28)]
-    right = [(2, -12), (24, -9), (40, 4), (46, 26), (46, 46), (48, 78), (34, 66), (28, 50),
-             (22, 30), (10, 8), (2, -1)]
-    outb = [shape(back, mode, c["hair"], st["line"], st["lw"])]
-    if mode == "yj":
-        outb.append(path(smooth([(-50, 60), (-56, 120), (-58, 190), (-36, 190), (-40, 120), (-38, 62)], True),
-                         shade(c["hair"], 0.8)))
-        outb.append(path(smooth([(50, 60), (56, 120), (58, 190), (36, 190), (40, 120), (38, 62)], True),
-                         shade(c["hair"], 0.8)))
-    outf = [shape(left, mode, c["hair"], st["line"], st["lw"]),
-            shape(right, mode, c["hair"], st["line"], st["lw"])]
-    hi = c["hair_hi"]
-    if mode == "dcau":
-        outf.append(poly([(-30, -4), (-8, -10), (-10, 0), (-24, 12), (-34, 30)], hi))
-        outf.append(poly([(8, -8), (26, -5), (34, 8), (22, 4), (12, -2)], hi))
-    else:
-        outf.append(path(smooth([(-30, -4), (-8, -10), (-10, 0), (-24, 12), (-34, 30)], True), hi))
-        outf.append(path(smooth([(8, -8), (26, -5), (34, 8), (22, 4), (12, -2)], True), hi))
-        for s in ([(-40, 20), (-42, 60)], [(-20, 4), (-30, 40)], [(30, 6), (40, 40)], [(52, 90), (58, 160)],
-                  [(-52, 90), (-58, 160)]):
-            outf.append(path(smooth(s, False), None, shade(c["hair"], 0.65), st["thin"]))
-    return outb, outf
+def hair_marco(c):
+    back = [(-34, 26), (-26, 6), (-6, -6), (16, -6), (36, 2), (48, 20), (52, 50), (54, 92), (44, 102), (32, 94),
+            (-30, 94), (-38, 84), (-40, 60)]
+    front = [(-30, 30), (-26, 10), (-8, -2), (14, -4), (34, 2), (46, 16), (50, 34), (50, 52), (52, 92), (44, 100),
+             (40, 86), (40, 60), (38, 40), (30, 26), (22, 30), (14, 22), (6, 30), (-4, 22), (-12, 30), (-20, 24),
+             (-24, 40), (-28, 60), (-30, 90), (-36, 90), (-38, 60), (-34, 44)]
+    return ([poly(back, c["hair"], LINE, LW)],
+            [poly(front, c["hair"], LINE, LW), poly([(-14, 2), (6, -3), (26, 4), (16, 10), (-2, 10)], c["hair_hi"])])
 
 
-def hair_marco(c, st, mode):
-    back = [(-50, 30), (-44, 0), (-22, -12), (0, -14), (22, -12), (44, 0), (50, 30),
-            (52, 72), (48, 104), (36, 108), (-36, 108), (-48, 104), (-52, 72)]
-    front = [(-46, 44), (-44, 6), (-24, -9), (0, -12), (24, -9), (44, 6), (46, 44),
-             (40, 30), (32, 40), (24, 26), (14, 38), (4, 26), (-6, 38), (-16, 26),
-             (-26, 40), (-36, 30)]
-    outb = [shape(back, mode, c["hair"], st["line"], st["lw"])]
-    outf = [shape(front, mode, c["hair"], st["line"], st["lw"])]
-    hi = c["hair_hi"]
-    if mode == "dcau":
-        outf.append(poly([(-20, -2), (0, -8), (22, -4), (12, 4), (-8, 6)], hi))
-    else:
-        outf.append(path(smooth([(-20, -2), (0, -8), (22, -4), (12, 4), (-8, 6)], True), hi))
-        for s in ([(-36, 10), (-40, 40)], [(-10, -4), (-14, 26)], [(16, -4), (22, 24)], [(36, 12), (42, 40)],
-                  [(46, 60), (44, 100)], [(-46, 60), (-44, 100)]):
-            outf.append(path(smooth(s, False), None, shade(c["hair"], 1.4), st["thin"]))
-    return outb, outf
+def hair_cassie(c):
+    cap = [(-28, 22), (-26, 8), (-14, 0), (2, -4), (22, -3), (40, 4), (48, 18), (48, 36), (44, 48), (40, 50), (38, 38),
+           (32, 26), (22, 20), (10, 18), (-2, 20), (-12, 16), (-20, 20), (-24, 30)]
+    return [], [poly(cap, c["hair"], LINE, LW), poly([(-8, 6), (8, 1), (24, 6), (16, 10), (0, 10)], c["hair_hi"])]
 
 
-def hair_cassie(c, st, mode):
-    cap = [(-40, 40), (-40, 12), (-30, -1), (-12, -8), (10, -9), (30, -3), (40, 12), (40, 40),
-           (37, 28), (28, 17), (14, 13), (0, 12), (-14, 13), (-28, 17), (-37, 28)]
-    out = [shape(cap, mode, c["hair"], st["line"], st["lw"])]
-    hi = c["hair_hi"]
-    if mode == "dcau":
-        out.append(poly([(-14, 0), (6, -5), (26, 0), (16, 5), (-2, 5)], hi))
-    else:
-        out.append(path(smooth([(-14, 0), (6, -5), (26, 0), (16, 5), (-2, 5)], True), hi))
-        # tight-crop texture: short scallops along the crown
-        for x in range(-30, 31, 10):
-            out.append(path(smooth([(x - 4, 4 + abs(x) * 0.15), (x, 1 + abs(x) * 0.15), (x + 4, 4 + abs(x) * 0.15)],
-                                   False), None, shade(c["hair"], 1.6), st["thin"] * 0.8))
-    return [], out
+def hair_tobias(c):
+    front = [(-34, 30), (-30, 10), (-16, -2), (2, -6), (22, -4), (40, 4), (50, 20), (52, 42), (48, 54), (42, 50),
+             (40, 42), (36, 50), (32, 34), (26, 44), (20, 30), (12, 42), (6, 28), (-2, 40), (-8, 26), (-16, 38),
+             (-22, 26), (-28, 40)]
+    return [], [poly(front, c["hair"], LINE, LW), poly([(-14, 4), (4, -2), (24, 2), (14, 8), (-4, 10)], c["hair_hi"])]
 
 
-def hair_tobias(c, st, mode):
-    front = [(-46, 44), (-44, 8), (-26, -7), (0, -11), (26, -7), (44, 8), (48, 42), (50, 60),
-             (44, 54), (40, 36), (36, 46), (28, 30), (24, 46), (16, 32), (8, 46), (0, 30),
-             (-8, 44), (-16, 30), (-24, 46), (-30, 32), (-38, 46), (-44, 56), (-48, 60)]
-    out = [shape(front, mode, c["hair"], st["line"], st["lw"])]
-    hi = c["hair_hi"]
-    if mode == "dcau":
-        out.append(poly([(-24, 2), (-4, -6), (18, -3), (10, 6), (-10, 8)], hi))
-    else:
-        out.append(path(smooth([(-24, 2), (-4, -6), (18, -3), (10, 6), (-10, 8)], True), hi))
-        for s in ([(-34, 6), (-40, 40)], [(-14, -6), (-18, 30)], [(6, -8), (10, 30)], [(30, 0), (38, 34)]):
-            out.append(path(smooth(s, False), None, shade(c["hair"], 0.7), st["thin"]))
-    return [], out
-
-
-def hair_ax(c, st, mode):
-    """Medium length with loose curls: a scalloped silhouette built from arcs
-    (the Timm way to say 'curly' with one unbroken line)."""
-    import math as _m
-    cx, cy = 0, 30
-    d = ""
-    angs = [190 - 14 * k for k in range(14)]  # 190 .. 8 degrees, over the top
-    first = True
-    for i in range(len(angs) - 1):
-        a0, a1 = _m.radians(angs[i]), _m.radians(angs[i + 1])
-        r0, r1 = 47, 47
-        am = (a0 + a1) / 2
-        rm = 56
-        x0, y0 = cx + r0 * _m.cos(a0), cy - r0 * _m.sin(a0) * 1.1
-        xm, ym = cx + rm * _m.cos(am), cy - rm * _m.sin(am) * 1.1
-        x1, y1 = cx + r1 * _m.cos(a1), cy - r1 * _m.sin(a1) * 1.1
-        if first:
-            d += f"M {f1(x0)},{f1(y0)} "
-            first = False
-        d += f"Q {f1(xm)},{f1(ym)} {f1(x1)},{f1(y1)} "
-    # right side down past the ear, then the fringe back across the forehead
-    d += "Q 56,42 50,58 L 44,52 L 42,36 L 32,24 L 20,32 L 8,20 L -2,32 L -12,20 L -24,32 L -34,24 "
-    d += "L -42,36 L -44,52 L -50,58 Q -56,42 -47,26 Z"
-    out = [path(d, c["hair"], st["line"], st["lw"])]
-    hi = c["hair_hi"]
-    if mode == "dcau":
-        out.append(poly([(-20, -6), (2, -12), (24, -7), (14, 2), (-6, 4)], hi))
-    else:
-        out.append(path(smooth([(-20, -6), (2, -12), (24, -7), (14, 2), (-6, 4)], True), hi))
-        for (x, y) in [(-40, 10), (-8, -8), (24, -4), (44, 28)]:
-            out.append(path(f"M {x-4},{y} q 4,-6 8,0", None, shade(c["hair"], 0.6), st["thin"]))
+def hair_ax(c):
+    front = [(-30, 26), (-28, 10), (-16, 0), (0, -6), (20, -5), (38, 2), (50, 16), (54, 36), (56, 60), (52, 74),
+             (44, 70), (42, 52), (40, 48), (38, 36), (30, 24), (20, 20), (8, 22), (-4, 16), (-14, 22), (-22, 18),
+             (-28, 30), (-32, 44), (-36, 62), (-30, 66), (-26, 50), (-24, 40)]
+    out = [poly(front, c["hair"], LINE, LW), poly([(-12, 4), (8, -2), (28, 4), (18, 10), (0, 10)], c["hair_hi"])]
+    # a few curl strokes along the silhouette
+    for (x, y) in [(52, 30), (54, 56), (-34, 56), (-30, 16)]:
+        out.append(path(f"M {x - 4},{y} q 5,-5 6,2", None, LINE, THIN))
     return [], out
 
 
@@ -528,129 +388,169 @@ HAIR = dict(jake=hair_jake, rachel=hair_rachel, marco=hair_marco, cassie=hair_ca
             tobias=hair_tobias, ax=hair_ax)
 
 
-# ---------------------------------------------------------------- outfits
-
-TORSO = [(-17, 116), (-30, 122), (-52, 130), (-84, 144), (-94, 200), (94, 200), (84, 144),
-         (52, 130), (30, 122), (17, 116)]
-
-
-def neck(c, st, mode):
-    g = c["g"]
-    w = 14 if g == "m" else 11
-    pts = [(-w, 88), (w, 88), (w + 1, 122), (-w - 1, 122)]
-    out = [poly(pts, c["skin"], st["line"], st["lw"])]
-    out.append(poly([(w * 0.1, 96), (w, 92), (w + 1, 122), (-w * 0.3, 122)], shade(c["skin"], 0.78)))
-    if mode == "yj":
-        out.append(pline([(-w * 0.4, 100), (-w * 0.3, 118)], st["line"], st["thin"]))
-    return out
-
-
-def outfit(c, st, mode):
-    kind = c["outfit"]
-    line, lw, thin = st["line"], st["lw"], st["thin"]
-    col, col2 = c["cloth"], c["cloth2"]
-    dark = shade(col, 0.72)
-    out = []
-    torso = TORSO
-    if kind == "hoodie":
-        # hood bunched behind the neck
-        hood = [(-30, 100), (-44, 108), (-52, 128), (-30, 124), (0, 122), (30, 124), (52, 128), (44, 108), (30, 100)]
-        out.append(shape(hood, mode, dark, line, lw))
-    out.append(shape(torso, mode, col, line, lw))
-    out.append(shape([(20, 118), (52, 130), (84, 144), (94, 200), (40, 200), (34, 150)], mode, dark))
-    if kind == "tee":
-        collar = [(-20, 116), (-10, 124), (0, 127), (10, 124), (20, 116), (16, 113), (0, 121), (-16, 113)]
-        out.append(shape(collar, mode, dark, line, lw))
-    elif kind == "hoodie":
-        # kangaroo pocket seam and drawstrings
-        out.append(shape([(-22, 116), (0, 128), (22, 116)], mode, None, line, lw, closed=False))
-        for sgn in (-1, 1):
-            out.append(pline([(sgn * 10, 126), (sgn * 12, 170), (sgn * 15, 176)], line, thin))
-            out.append(circle(sgn * 15, 178, 2.4, dark, line, thin))
-        out.append(shape([(-60, 170), (60, 170)], mode, None, line, thin, closed=False))
-    elif kind == "jacket":
-        # fitted top with a cropped denim jacket over it
-        out.append(shape([(-13, 116), (0, 128), (13, 116)], mode, None, line, lw, closed=False))
-        for sgn in (-1, 1):
-            lapel = [(sgn * 17, 114), (sgn * 30, 122), (sgn * 52, 130), (sgn * 84, 144), (sgn * 94, 200),
-                     (sgn * 30, 200), (sgn * 20, 160), (sgn * 12, 136)]
-            out.append(shape(lapel, mode, col2, line, lw))
-            out.append(poly([(sgn * 17, 114), (sgn * 34, 120), (sgn * 28, 140), (sgn * 12, 136)],
-                            shade(col2, 0.8), line, lw))
-            if mode == "yj":
-                out.append(pline([(sgn * 40, 150), (sgn * 36, 200)], shade(col2, 0.7), thin))
-                out.append(pline([(sgn * 70, 140), (sgn * 82, 200)], shade(col2, 0.7), thin))
-    elif kind == "overalls":
-        # yellow tee under denim bib
-        out.append(shape([(-20, 116), (-10, 124), (0, 127), (10, 124), (20, 116), (16, 113), (0, 121), (-16, 113)],
-                         mode, dark, line, lw))
-        bib = [(-30, 152), (30, 152), (32, 200), (-32, 200)]
-        for sgn in (-1, 1):
-            strap = [(sgn * 26, 152), (sgn * 30, 128), (sgn * 40, 128), (sgn * 34, 152)]
-            out.append(shape(strap, mode, col2, line, lw))
-        out.append(shape(bib, mode, col2, line, lw))
-        out.append(poly([(8, 152), (30, 152), (32, 200), (12, 200)], shade(col2, 0.78)))
-        for sgn in (-1, 1):
-            out.append(circle(sgn * 24, 156, 3.4, "#c9b46a", line, thin))
-        out.append(shape([(-18, 168), (18, 168), (18, 192), (-18, 192)], mode, None, line, thin))
-    elif kind == "flannel":
-        # grey tee under an open flannel
-        out.append(shape([(-16, 116), (0, 126), (16, 116)], mode, None, line, lw, closed=False))
-        for sgn in (-1, 1):
-            panel = [(sgn * 19, 114), (sgn * 30, 122), (sgn * 52, 130), (sgn * 84, 144), (sgn * 94, 200),
-                     (sgn * 34, 200), (sgn * 26, 160), (sgn * 20, 130)]
-            pid = f"fl{c['key']}{mode}{sgn+1}"
-            out.append(f'<clipPath id="{pid}">{shape(panel, mode, "#000")}</clipPath>')
-            out.append(shape(panel, mode, col, line, lw))
-            grid = []
-            for x in range(-100, 101, 16):
-                grid.append(rect(x, 100, 5, 110, shade(col, 0.72)))
-            for y in range(104, 210, 18):
-                grid.append(rect(-100, y, 200, 5, shade(col, 0.72)))
-            out.append(group(grid, extra=f'clip-path="url(#{pid})" opacity="0.9"'))
-            out.append(shape(panel, mode, None, line, lw))
-        # tee showing between panels
-        out.append(shape([(-19, 114), (-20, 130), (-26, 160), (-34, 200), (34, 200), (26, 160), (20, 130), (19, 114),
-                          (10, 124), (0, 127), (-10, 124)], mode, col2, line, lw))
-        for sgn in (-1, 1):
-            panel = [(sgn * 19, 114), (sgn * 30, 122), (sgn * 52, 130), (sgn * 84, 144), (sgn * 94, 200),
-                     (sgn * 34, 200), (sgn * 26, 160), (sgn * 20, 130)]
-            out.append(shape(panel, mode, None, line, lw))
-    if mode == "yj":
-        # a couple of cloth folds
-        out.append(path(smooth([(-60, 150), (-52, 176), (-56, 200)], False), None, line, thin))
-        out.append(path(smooth([(58, 152), (66, 180), (62, 200)], False), None, line, thin))
-    return out
-
-
-# ------------------------------------------------------------------- bust
-
-def bust(c, mode):
-    st = STYLES[mode]
-    g = c["g"]
+def head(c):
+    """Head, neck and hair in head units. Bust clothing / body are separate."""
     parts = []
-    back_hair, front_hair = HAIR[c["key"]](c, st, mode)
+    back_hair, front_hair = HAIR[c["key"]](c)
     parts += back_hair
-    parts += neck(c, st, mode)
-    parts += outfit(c, st, mode)
-    parts += draw_ears(c, st, mode)
-    face = face_outline(g, mode)
-    parts.append(shape(face, mode, c["skin"], st["line"], st["lw"]))
-    parts.append(shape(face_shadow(g, mode), mode, shade(c["skin"], 0.8)))
-    if st["tones"] >= 2:
-        # highlight plane on the lit cheek / forehead
-        parts.append(shape([(-30, 28), (-16, 22), (-8, 40), (-14, 58), (-26, 56), (-33, 42)], mode,
-                           shade(c["skin"], 1.12)))
-    if mode == "yj":
-        # cheekbone and jaw contour lines
-        parts.append(path(smooth([(-30, 62), (-26, 74), (-16, 86)], False), None, st["line"], st["thin"]))
-    parts += draw_brows(c, st, mode)
-    parts += draw_eyes(c, st, mode)
-    parts += draw_nose(c, st, mode)
-    parts += draw_mouth(c, st, mode)
+    parts += draw_neck(c)
+    parts += draw_ear(c)
+    parts.append(poly(head_outline(c["g"]), c["skin"], LINE, LW))
+    parts += draw_brows(c)
+    parts += draw_eyes(c)
+    parts += draw_nose(c)
+    parts += draw_mouth(c)
     parts += front_hair
-    # front hair sits under the outline of the face, so redraw the jaw line
-    parts.append(shape(face, mode, None, st["line"], st["lw"]))
+    return parts
+
+
+# ---------------------------------------------------------------- bodies
+
+def body_dims(c):
+    """Landmark table in head units for a standing figure, y=0 at top of head."""
+    T = c["heads"] * 100
+    b = c["build"]
+    S = {"m": 92, "s": 82, "f": 70}[b]     # shoulder half-width
+    Wt = {"m": 52, "s": 48, "f": 38}[b]    # waist
+    Hp = {"m": 60, "s": 56, "f": 58}[b]    # hips
+    y_s = 130
+    y_w = y_s + (T - 100) * 0.30
+    y_h = y_w + (T - 100) * 0.10
+    y_c = y_h + 24
+    y_k = y_c + (T - y_c) * 0.5
+    y_a = T - 22
+    return dict(T=T, S=S, W=Wt, H=Hp, y_s=y_s, y_w=y_w, y_h=y_h, y_c=y_c, y_k=y_k, y_a=y_a)
+
+
+def figure(c):
+    """Full standing figure, face three-quarter, body square to camera."""
+    d = body_dims(c)
+    T, S, Wt, Hp = d["T"], d["S"], d["W"], d["H"]
+    y_s, y_w, y_h, y_c, y_k, y_a = d["y_s"], d["y_w"], d["y_h"], d["y_c"], d["y_k"], d["y_a"]
+    skin, top, top2, pants, shoes = c["skin"], c["top"], c["top2"], c["pants"], c["shoes"]
+    fem = c["build"] == "f"
+    kind = c["outfit"]
+    parts = []
+    # neck extends under the collar; drawn first
+    parts.append(poly([(-10, 96), (-12, y_s + 6), (36, y_s + 6), (36, 84)] if not fem else
+                      [(-8, 96), (-10, y_s + 6), (24, y_s + 6), (24, 86)], skin, LINE, LW))
+    # legs: thigh tapers to the knee, calf swells a little, narrow ankle
+    kw = 40 if not fem else 36
+    for sgn in (-1, 1):
+        y_cf = y_k + (y_a - y_k) * 0.4
+        leg = [(sgn * Hp, y_h), (sgn * 5, y_c), (sgn * 10, y_k), (sgn * 8, y_cf), (sgn * 10, y_a), (sgn * 30, y_a),
+               (sgn * kw, y_cf), (sgn * kw, y_k), (sgn * (Hp + 2), y_h + 26)]
+        parts.append(poly(leg, pants, LINE, LW))
+        parts.append(poly([(sgn * 8, y_a), (sgn * 32, y_a), (sgn * 44, y_a + 10), (sgn * 46, T - 4), (sgn * 38, T),
+                           (sgn * 4, T), (sgn * 2, y_a + 8)], shoes, LINE, LW))
+    # arms: wrist at the crotch line, fingertips mid-thigh; sleeve over the skin
+    long_sleeve = kind in ("hoodie", "jacket", "flannel")
+    sleeve_col = {"jacket": top2, "flannel": top}.get(kind, top)
+    for sgn in (-1, 1):
+        sh = (sgn * (S - 6), y_s + 4)
+        el = (sgn * (S + 6), y_w + 6)
+        wr = (sgn * (S + 2), y_c + 6)
+        pit = (sgn * (S - 30), y_s + 2)
+        upper = [pit, sh, (el[0] + sgn * 11, el[1]), (el[0] - sgn * 11, el[1] + 4)]
+        fore = [(el[0] + sgn * 11, el[1]), (wr[0] + sgn * 8, wr[1]), (wr[0] - sgn * 8, wr[1]), (el[0] - sgn * 11, el[1] + 4)]
+        parts.append(poly(upper, skin, LINE, LW))
+        parts.append(poly(fore, skin, LINE, LW))
+        if long_sleeve:
+            sleeve = [pit, sh, (el[0] + sgn * 12, el[1]), (wr[0] + sgn * 10, wr[1] - 6), (wr[0] - sgn * 10, wr[1] - 6),
+                      (el[0] - sgn * 12, el[1] + 4)]
+        else:
+            t = 0.45
+            o = (sh[0] + (el[0] + sgn * 11 - sh[0]) * t, sh[1] + (el[1] - sh[1]) * t)
+            i_ = (pit[0] + (el[0] - sgn * 11 - pit[0]) * t, pit[1] + (el[1] + 4 - pit[1]) * t)
+            sleeve = [pit, sh, (o[0] + sgn * 2, o[1] + 4), (i_[0] - sgn * 2, i_[1] + 6)]
+        parts.append(poly(sleeve, sleeve_col, LINE, LW))
+        parts.append(poly([(wr[0] - sgn * 8, wr[1]), (wr[0] + sgn * 8, wr[1]), (wr[0] + sgn * 12, wr[1] + 26),
+                           (wr[0] + sgn * 4, wr[1] + 44), (wr[0] - sgn * 7, wr[1] + 40), (wr[0] - sgn * 10, wr[1] + 18)],
+                          skin, LINE, LW))
+        parts.append(pline([(wr[0] + sgn * 7, wr[1] + 22), (wr[0] + sgn * 9, wr[1] + 30)], LINE, THIN))
+    # torso garment
+    hem = y_h + (8 if fem else 14)
+    torso = [(-(S - 12), y_s), (S + 2, y_s), (S - 14, y_s + 30), (Wt + 4, y_w), (Hp + 2, hem), (-(Hp - 6), hem),
+             (-(Wt - 4), y_w), (-(S - 26), y_s + 30)]
+    parts.append(poly(torso, top, LINE, LW))
+    if kind == "tee":
+        parts.append(poly([(-8, y_s - 8), (30, y_s - 8), (26, y_s + 2), (12, y_s + 8), (-4, y_s + 2)], shade(top, 0.75), LINE, LW))
+    elif kind == "hoodie":
+        parts.append(poly([(-24, y_s - 12), (44, y_s - 12), (50, y_s + 10), (12, y_s + 22), (-30, y_s + 10)], shade(top, 0.75), LINE, LW))
+        parts.append(poly([(-Wt - 4, y_w + 20), (Wt + 4, y_w + 20), (Wt + 4, hem - 8), (-Wt - 4, hem - 8)], None, LINE, THIN))
+        for sgn in (-1, 1):
+            parts.append(pline([(sgn * 10, y_s + 18), (sgn * 12, y_w + 10)], LINE, THIN))
+    elif kind == "jacket":
+        parts.append(poly([(-4, y_s - 6), (22, y_s - 6), (20, y_s + 4), (10, y_s + 10), (-2, y_s + 4)], shade(top, 0.75), LINE, LW))
+        for sgn in (-1, 1):
+            lapel = [(sgn * (S - 4), y_s), (sgn * 16, y_s - 6), (sgn * 14, y_s + 60), (sgn * 20, hem - 10),
+                     (sgn * (Hp - 2), hem - 10), (sgn * Wt, y_w), (sgn * (S - 20), y_s + 30)]
+            parts.append(poly(lapel, top2, LINE, LW))
+            parts.append(poly([(sgn * 16, y_s - 6), (sgn * 34, y_s - 2), (sgn * 30, y_s + 26), (sgn * 15, y_s + 20)],
+                              shade(top2, 0.8), LINE, LW))
+    elif kind == "overalls":
+        parts.append(poly([(-8, y_s - 8), (30, y_s - 8), (26, y_s + 2), (12, y_s + 8), (-4, y_s + 2)], shade(top, 0.75), LINE, LW))
+        bib_top = y_s + 44
+        for sgn in (-1, 1):
+            parts.append(poly([(sgn * 22, bib_top), (sgn * 28, y_s), (sgn * 38, y_s), (sgn * 32, bib_top)], top2, LINE, LW))
+        parts.append(poly([(-30, bib_top), (30, bib_top), (Wt + 4, y_w), (Hp, hem + 6), (-Hp, hem + 6), (-Wt - 4, y_w)],
+                          top2, LINE, LW))
+        for sgn in (-1, 1):
+            parts.append(circle(sgn * 24, bib_top + 5, 3.4, "#c9b46a", LINE, THIN))
+        parts.append(poly([(-16, bib_top + 18), (16, bib_top + 18), (16, bib_top + 42), (-16, bib_top + 42)], None, LINE, THIN))
+    elif kind == "flannel":
+        # grey tee, flannel open over it
+        parts.append(poly([(-Wt, y_s), (Wt, y_s), (Wt, hem), (-Wt, hem)], top2, LINE, LW))
+        parts.append(poly([(-6, y_s - 6), (28, y_s - 6), (24, y_s + 2), (12, y_s + 8), (-2, y_s + 2)], shade(top2, 0.75), LINE, LW))
+        for sgn in (-1, 1):
+            panel = [(sgn * (S - 4), y_s), (sgn * 18, y_s - 6), (sgn * 20, hem + 4), (sgn * (Hp + 4), hem + 4),
+                     (sgn * Wt, y_w), (sgn * (S - 20), y_s + 30)]
+            pid = f"fl{c['key']}{int(sgn > 0)}"
+            parts.append(f'<clipPath id="{pid}">{poly(panel)}</clipPath>')
+            parts.append(poly(panel, top, LINE, LW))
+            grid = []
+            for x in range(-120, 121, 18):
+                grid.append(rect(x, y_s - 10, 5, hem - y_s + 20, shade(top, 0.72)))
+            for y in range(int(y_s) - 10, int(hem) + 20, 20):
+                grid.append(rect(-120, y, 240, 5, shade(top, 0.72)))
+            parts.append(group(grid, extra=f'clip-path="url(#{pid})" opacity="0.9"'))
+            parts.append(poly(panel, None, LINE, LW))
+    # head over everything
+    parts += head(c)
+    return parts
+
+
+def bust(c, mode="dcau"):
+    """Head and shoulders, cropped at y~200 for the heads board."""
+    d = body_dims(c)
+    S, y_s = d["S"], d["y_s"]
+    top = c["top"]
+    parts = [poly([(-10, 96), (-12, y_s + 6), (36, y_s + 6), (36, 84)] if c["build"] != "f" else
+                  [(-8, 96), (-10, y_s + 6), (24, y_s + 6), (24, 86)], c["skin"], LINE, LW)]
+    torso = [(-(S - 12), y_s), (S + 2, y_s), (S + 12, y_s + 40), (S + 14, 230), (-(S + 2), 230), (-(S), y_s + 40)]
+    parts.append(poly(torso, top, LINE, LW))
+    kind = c["outfit"]
+    if kind in ("tee", "overalls"):
+        parts.append(poly([(-8, y_s - 8), (30, y_s - 8), (26, y_s + 2), (12, y_s + 8), (-4, y_s + 2)], shade(top, 0.75), LINE, LW))
+        if kind == "overalls":
+            for sgn in (-1, 1):
+                parts.append(poly([(sgn * 22, 230), (sgn * 28, y_s), (sgn * 38, y_s), (sgn * 32, 230)], c["top2"], LINE, LW))
+    elif kind == "hoodie":
+        parts.append(poly([(-24, y_s - 12), (44, y_s - 12), (50, y_s + 10), (12, y_s + 22), (-30, y_s + 10)], shade(top, 0.75), LINE, LW))
+        for sgn in (-1, 1):
+            parts.append(pline([(sgn * 10, y_s + 18), (sgn * 12, 230)], LINE, THIN))
+    elif kind in ("jacket", "flannel"):
+        under = c["top2"] if kind == "flannel" else top
+        over = top if kind == "flannel" else c["top2"]
+        parts.append(poly([(-40, y_s - 4), (40, y_s - 4), (40, 230), (-40, 230)], under, LINE, LW))
+        parts.append(poly([(-4, y_s - 6), (24, y_s - 6), (20, y_s + 4), (10, y_s + 10), (-2, y_s + 4)], shade(under, 0.75), LINE, LW))
+        for sgn in (-1, 1):
+            panel = [(sgn * (S - 4), y_s), (sgn * 16, y_s - 6), (sgn * 18, 230), (sgn * (S + 8), 230), (sgn * (S + 6), y_s + 40)]
+            parts.append(poly(panel, over, LINE, LW))
+            if kind == "jacket":
+                parts.append(poly([(sgn * 16, y_s - 6), (sgn * 34, y_s - 2), (sgn * 30, y_s + 26), (sgn * 15, y_s + 20)],
+                                  shade(over, 0.8), LINE, LW))
+    parts += head(c)
     return parts
 
 
@@ -687,74 +587,68 @@ def label_strip(title, subtitle, fg, sub_fg, family_title="Big Shoulders Display
 
 # ----------------------------------------------------------------- sheets
 
-def sheet_lineup(mode):
-    st = STYLES[mode]
-    if mode == "dcau":
-        bg = "#07070a"
-        body = []
-        # gradient haze along the horizon, light painted onto black
-        body.append('<defs><linearGradient id="haze" x1="0" y1="0" x2="0" y2="1">'
-                    '<stop offset="0" stop-color="#07070a" stop-opacity="0"/>'
-                    '<stop offset="1" stop-color="#1c2740" stop-opacity="1"/></linearGradient>'
-                    '<radialGradient id="moon" cx="0.5" cy="0.5" r="0.5">'
-                    '<stop offset="0" stop-color="#e9e2c8"/><stop offset="1" stop-color="#b9b39a"/></radialGradient>'
-                    '</defs>')
-        body.append(rect(0, 400, W, 500, "url(#haze)"))
-        body.append(circle(1130, 146, 36, "url(#moon)"))
-        body += deco_skyline(0, W, 900, seed=7)
-        body += label_strip("ANIMORPHS  /  CHARACTER LINEUP", "DARK DECO TREATMENT  -  BATMAN & SUPERMAN ADVENTURES REFERENCE",
-                            "#e9e2c8", "#8f9bb3")
-        name_fg, tag_fg = "#e9e2c8", "#8f9bb3"
-        panel = "#0d0f16"
-    else:
-        bg = "#1b2331"
-        body = []
-        body.append('<defs><linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1">'
-                    '<stop offset="0" stop-color="#151b27"/><stop offset="0.55" stop-color="#2b3a4f"/>'
-                    '<stop offset="1" stop-color="#5d5a52"/></linearGradient>'
-                    '<linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">'
-                    '<stop offset="0" stop-color="#3a3630"/><stop offset="1" stop-color="#211f1c"/></linearGradient>'
-                    '</defs>')
-        body.append(rect(0, 0, W, H, "url(#dusk)"))
-        body.append(rect(0, 760, W, 140, "url(#ground)"))
-        # a low, believable suburban horizon: rooftops and power lines
-        for i, (x, w, h) in enumerate([(0, 220, 70), (240, 180, 90), (440, 260, 60), (720, 200, 100),
-                                        (940, 240, 70), (1200, 200, 110), (1420, 200, 80)]):
-            body.append(poly([(x, 760), (x, 760 - h), (x + w * 0.5, 760 - h - 40), (x + w, 760 - h), (x + w, 760)],
-                             "#2a2c33" if i % 2 else "#33363e"))
-        body.append(path("M 0,690 Q 400,720 800,690 T 1600,690", None, "#15181f", 2))
-        body += label_strip("ANIMORPHS  /  CHARACTER LINEUP", "GROUNDED TREATMENT  -  YOUNG JUSTICE REFERENCE",
-                            "#f1eadb", "#a9b3c4")
-        name_fg, tag_fg = "#f1eadb", "#a9b3c4"
-        panel = "#20283a"
+def deco_ground(body, seed=7, haze_id="haze"):
+    body.append(f'<defs><linearGradient id="{haze_id}" x1="0" y1="0" x2="0" y2="1">'
+                '<stop offset="0" stop-color="#07070a" stop-opacity="0"/>'
+                '<stop offset="1" stop-color="#1c2740" stop-opacity="1"/></linearGradient></defs>')
+    body.append(rect(0, 400, W, 500, f"url(#{haze_id})"))
+    body += deco_skyline(0, W, 900, seed=seed)
 
-    # six busts across; each in its own crop window
+
+def sheet_heads():
+    bg = "#07070a"
+    body = []
+    deco_ground(body, seed=7)
+    body += label_strip("ANIMORPHS  /  HEADS", "TIMM CONSTRUCTION, THREE-QUARTER  -  BATMAN & SUPERMAN ADVENTURES",
+                        "#e9e2c8", "#8f9bb3")
+    notes = ["three-quarter view, nose breaks the far silhouette", "boys: straight jaw to a squared chin, thick neck",
+             "girls: heart face, pointed chin, lash flicks, full lips", "small eyes, dot pupils, wedge brows, one-line mouth",
+             "one thin uniform outline, flat colour, no face shading"]
+    for j, n_ in enumerate(notes):
+        body.append(text(W - 60, 58 + j * 21, n_, 14.5, "#8f9bb3", "Oswald", 500, "end", 'letter-spacing="1"'))
     n = len(CHARS)
     slot = (W - 120) / n
-    scale = 1.62
+    scale = 1.55
+    top = 262
     for i, c in enumerate(CHARS):
         cx = 60 + slot * (i + 0.5)
-        top = 250
-        clip_id = f"crop{mode}{i}"
-        body.append(f'<clipPath id="{clip_id}"><rect x="{f1(cx - slot/2 + 8)}" y="{top - 60}" '
-                    f'width="{f1(slot - 16)}" height="{f1(200 * scale + 60)}" rx="4"/></clipPath>')
-        body.append(rect(cx - slot / 2 + 8, top - 60, slot - 16, 200 * scale + 60, panel,
-                         extra='opacity="0.55"' if mode == "dcau" else 'opacity="0.35"'))
-        inner = group(bust(c, mode), f"translate({f1(cx)},{f1(top)}) scale({scale})")
+        clip_id = f"crop{i}"
+        ph = 200 * scale + 40
+        body.append(f'<clipPath id="{clip_id}"><rect x="{f1(cx - slot/2 + 8)}" y="{top - 70}" '
+                    f'width="{f1(slot - 16)}" height="{f1(ph)}"/></clipPath>')
+        body.append(rect(cx - slot / 2 + 8, top - 70, slot - 16, ph, "#0d0f16", extra='opacity="0.6"'))
+        inner = group(bust(c), f"translate({f1(cx - 8)},{f1(top)}) scale({scale})")
         body.append(f'<g clip-path="url(#{clip_id})">{inner}</g>')
-        body.append(text(cx, top + 200 * scale + 40, c["name"], 30, name_fg, "Big Shoulders Display", 900,
+        body.append(text(cx, top - 70 + ph + 40, c["name"], 30, "#e9e2c8", "Big Shoulders Display", 900,
                          extra='letter-spacing="3"'))
-        body.append(text(cx, top + 200 * scale + 66, c["tag"], 16, tag_fg, "Oswald", 500,
-                         extra='letter-spacing="1"'))
-    # treatment notes in the corner
-    notes = {
-        "dcau": ["unbroken angular outline, uniform 3px line", "small eyes, heavy upper lid, one-stroke nose",
-                 "flat colour + one cel shadow", "hair as a single solid silhouette"],
-        "yj": ["realistic teen proportions, softer jaw", "irises, highlights, lash detail",
-               "two shade tones + a highlight plane", "layered clothing, seams and folds"],
-    }[mode]
-    for j, n_ in enumerate(notes):
-        body.append(text(W - 60, 66 + j * 22, n_, 15, tag_fg, "Oswald", 500, "end", 'letter-spacing="1"'))
+        body.append(text(cx, top - 70 + ph + 66, c["tag"], 16, "#8f9bb3", "Oswald", 500, extra='letter-spacing="1"'))
+    return svg_doc("\n".join(body), bg)
+
+
+def sheet_figures():
+    bg = "#07070a"
+    body = []
+    deco_ground(body, seed=9, haze_id="haze2")
+    body += label_strip("ANIMORPHS  /  FULL FIGURE LINEUP", "TIMM PROPORTIONS AT TEEN HEIGHTS  -  JAKE 7 HEADS, MARCO 6",
+                        "#e9e2c8", "#8f9bb3")
+    # floor line and height ticks
+    floor = 820
+    body.append(rect(60, floor, W - 120, 2, "#3a4256"))
+    px_per_head = 80.0
+    for k in range(1, 8):
+        yy = floor - k * px_per_head
+        body.append(rect(60, yy, 14, 2, "#3a4256"))
+        body.append(text(84, yy + 5, f"{k}", 13, "#5a6580", "Oswald", 500, "start"))
+    n = len(CHARS)
+    slot = (W - 200) / n
+    for i, c in enumerate(CHARS):
+        cx = 140 + slot * (i + 0.5)
+        sc = px_per_head / 100.0
+        T = c["heads"] * 100
+        inner = group(figure(c), f"translate({f1(cx)},{f1(floor - T * sc)}) scale({sc})")
+        body.append(inner)
+        body.append(text(cx, floor + 36, c["name"], 26, "#e9e2c8", "Big Shoulders Display", 900, extra='letter-spacing="3"'))
+        body.append(text(cx, floor + 58, f"{c['heads']:.1f} heads", 14, "#8f9bb3", "Oswald", 500, extra='letter-spacing="1"'))
     return svg_doc("\n".join(body), bg)
 
 
@@ -1091,8 +985,8 @@ def sheet_title():
 # ------------------------------------------------------------------ main
 
 SHEETS = [
-    ("01-lineup-dark-deco", lambda: sheet_lineup("dcau")),
-    ("02-lineup-grounded", lambda: sheet_lineup("yj")),
+    ("01-heads", sheet_heads),
+    ("02-figures", sheet_figures),
     ("03-scene-construction-site", sheet_scene),
     ("04-aliens-model-sheet", sheet_aliens),
     ("05-title-card", sheet_title),
