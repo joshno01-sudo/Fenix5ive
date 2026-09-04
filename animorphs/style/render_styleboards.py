@@ -16,6 +16,7 @@ Plus a "first episode" scene (the construction site), an alien model sheet
 
 Usage:
     python3 render_styleboards.py            # writes renders/*.svg
+    python3 render_styleboards.py guides     # writes comfyui/guides/*.svg (ControlNet line guides)
 
 Rasterize with the bundled chromium (see README.md):
     chromium --headless --no-sandbox --hide-scrollbars \
@@ -27,6 +28,7 @@ No dependencies beyond Python 3; fonts are read from ./fonts and embedded.
 import base64
 import math
 import os
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "renders")
@@ -993,7 +995,42 @@ SHEETS = [
 ]
 
 
+def guide_svgs():
+    """One black-on-white line drawing per character (head and full figure),
+    square-ish canvases, for use as ComfyUI Canny/lineart ControlNet guides."""
+    out_dir = os.path.join(HERE, "comfyui", "guides")
+    os.makedirs(out_dir, exist_ok=True)
+    written = []
+    import re
+
+    def lines_only(svg):
+        # keep the outline colour (pupils, brows), turn every other fill white
+        return re.sub(r'fill="#(?!%s)[0-9a-fA-F]{6}"' % LINE.lstrip("#"), 'fill="#ffffff"', svg)
+
+    for c in CHARS:
+        # heads: 1024x1024, bust crop
+        inner = group(bust(c), f"translate(500,150) scale(3.4)")
+        body = f'<clipPath id="g"><rect x="0" y="0" width="1024" height="1024"/></clipPath><g clip-path="url(#g)">{inner}</g>'
+        p = os.path.join(out_dir, f"{c['key']}-head.svg")
+        with open(p, "w") as f:
+            f.write(lines_only(svg_doc(body, "#ffffff", 1024, 1024)))
+        written.append(p)
+        # figures: 832x1216
+        T = c["heads"] * 100
+        sc = 1100.0 / T
+        inner = group(figure(c), f"translate(416,{f1(60)}) scale({f1(sc)})")
+        p = os.path.join(out_dir, f"{c['key']}-figure.svg")
+        with open(p, "w") as f:
+            f.write(lines_only(svg_doc(inner, "#ffffff", 832, 1216)))
+        written.append(p)
+    return written
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "guides":
+        for p in guide_svgs():
+            print("wrote", os.path.relpath(p, HERE))
+        return
     os.makedirs(OUT, exist_ok=True)
     for name, fn in SHEETS:
         p = os.path.join(OUT, name + ".svg")
