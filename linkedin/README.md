@@ -13,7 +13,7 @@ the site are stock, so they are intentionally not used here.
 | `fenix5ive-cover-3024x512.png` | **Cover image** with wordmark and tagline (upload this one) | 3024 × 512 (2× of 1512 × 256) |
 | `fenix5ive-cover-1512x256.png` | Same cover at LinkedIn's exact recommended size | 1512 × 256 |
 | `fenix5ive-cover-phoenix-only-3024x512.png` | Cover alternative, no text | 3024 × 512 |
-| `fenix5ive-first-post-1200x1200.png` | Image for the launch post (tagline headline) | 1200 × 1200 |
+| `fenix5ive-first-post-1200x627.png` | Image for the launch post (tagline headline), LinkedIn's 1.91:1 post ratio | 1200 × 627 |
 
 Where to upload: Page super admin view → **Edit page** → **Header** (logo, cover) and the rest below.
 
@@ -83,7 +83,7 @@ We keep pricing in line with what local organizations need, sponsor area youth a
 Visit us at 125 West Macarthur Dr, Cottage Hills, IL 62018, weekdays 9 am to 5 pm.
 Call 618-251-4221 · Text 618-917-4491 · fenix5ive@gmail.com · fenix5ive.com
 
-## Launch post (use with `fenix5ive-first-post-1200x1200.png`)
+## Launch post (use with `fenix5ive-first-post-1200x627.png`)
 
 Rise. Renew. Rebrand. Fenix 5ive is now on LinkedIn.
 
